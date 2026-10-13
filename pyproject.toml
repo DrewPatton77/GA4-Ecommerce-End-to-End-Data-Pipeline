@@ -1,0 +1,17 @@
+[project]
+name = "ga4-ecommerce-analytics-engine"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "LilyFae", email = "andrew.patton@ucalgary.ca" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+ga4-ecommerce-analytics-engine = "ga4_ecommerce_analytics_engine:main"
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"
