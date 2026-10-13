@@ -1,5 +1,5 @@
 from src.ga4_ecommerce_analytics_engine.constants import GCP_PROJECT_ID
-from pandas import PeriodDtype
+from pandas import pd
 from google.cloud import bigquery
 
 class BigQuery:
@@ -39,7 +39,7 @@ class BigQuery:
         Returns:
             - df: A pandas DataFrame.
         '''
-        
+
         client = bigquery.client(project=GCP_PROJECT_ID) # Initialize the client using google cloud.
         df = client.query(self.query).to_dataframe() # Run query and wait for it to finish. Transform BigQuery SQL to pandas DataFrame.
         return df
