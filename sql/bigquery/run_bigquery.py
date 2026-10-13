@@ -28,4 +28,18 @@ class BigQuery:
         cost_usd = (bytes_scanned / 1e12) * 6.25 # ~$6.25 USD per TB on-demand. (See:  https://cloud.google.com/bigquery/pricing#on-demand-compute-pricing).
         cost_cad = cost_usd * 1.38 # 1 usd ~ 1.38 cad. Subject to change as of Aug.20th, 2026. --> Rough estimate costs.
         print(f"Bytes_scanned: {bytes_scanned / 1e9:.2f} GB | Cost: ~${cost_cad:.4f} CAD.")
-    
+
+    def run_query(self) -> pd.DataFrame:
+        '''
+        Run a query on the Google Cloud Platform BigQuery dataset and transform it to a pandas dataframe.
+
+        Parameters:
+            - None
+
+        Returns:
+            - df: A pandas DataFrame.
+        '''
+        
+        client = bigquery.client(project=GCP_PROJECT_ID) # Initialize the client using google cloud.
+        df = client.query(self.query).to_dataframe() # Run query and wait for it to finish. Transform BigQuery SQL to pandas DataFrame.
+        return df
