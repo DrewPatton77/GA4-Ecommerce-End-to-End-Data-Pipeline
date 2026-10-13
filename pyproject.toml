@@ -7,7 +7,10 @@ authors = [
     { name = "LilyFae", email = "andrew.patton@ucalgary.ca" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "google-cloud==0.34.0",
+    "pandas==3.0.6",
+]
 
 [project.scripts]
 ga4-ecommerce-analytics-engine = "ga4_ecommerce_analytics_engine:main"
