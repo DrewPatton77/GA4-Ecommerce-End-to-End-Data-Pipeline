@@ -20,7 +20,7 @@ SELECT
             (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location'),
             'https?://[^/]+', ''
         ),
-        '\?.*', ''
+        '\\?.*', ''
     ) AS page_path,
     ecommerce.transaction_id,
     items.item_name AS item_name,
@@ -30,7 +30,7 @@ SELECT
     items.price_in_usd AS price,
     items.quantity As quantity,
     items.item_revenue_in_usd AS item_revenue,
-FROM `{DATASET}.{TABLE}`
+FROM `{{DATASET}}.{{TABLE}}`,
     UNNEST(items) AS items
-WHERE _TABLE_SUFFIX BETWEEN '{start_date}' AND '{end_date}'
+WHERE _TABLE_SUFFIX BETWEEN '{{start_date}}' AND '{{end_date}}'
     AND (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') IS NOT NULL
