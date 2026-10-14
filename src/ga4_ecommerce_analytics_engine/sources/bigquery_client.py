@@ -39,7 +39,7 @@ class BudgetExceededError(RuntimeError):
     Raised when a query's estimated scan is larger than the configured cap.
     '''
 
-@dataclass(frozen=True)
+@dataclass(frozen=True) # to make hashable.
 class CostEstimate:
     '''
     Result of a BigQuery dry run.
@@ -147,7 +147,7 @@ class BigQueryClient:
         '''
         Compare bytes to budget bytes.
         '''
-        return bytes_scanned <= self.maximum_bytes_billed
+        return bytes_scanned <= self.maximum_bytes_billed * BYTES_PER_GB
 
     # ---- Running queries ----------------------------
 
