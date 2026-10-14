@@ -9,5 +9,8 @@ wheels/
 # Virtual environments
 .venv
 .env
+
+# Other 
 .DS_Store
 config.py
+data/cache/
