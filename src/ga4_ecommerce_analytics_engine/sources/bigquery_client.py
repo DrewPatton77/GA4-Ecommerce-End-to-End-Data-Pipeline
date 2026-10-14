@@ -1,3 +1,9 @@
+'''
+BigQuery client: dry-run cost estimates and query run.
+
+Query results return as an Arrow table and converted to a polars DataFrame.
+'''
+
 from __future__ import annotations
 
 # built-in modules
