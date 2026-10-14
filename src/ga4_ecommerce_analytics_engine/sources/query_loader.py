@@ -1,5 +1,5 @@
 '''
-Load .sql files and render them into ready-to-run BigQuery queries.
+Load .sql files and render them a BigQuery queries ready to run.
 
 Templates uses {{double_brace}} placeholders, so single braces (regex quantifier 
 like {2,}) and dollar signs (regex anchors) in the SQL are left untouched.
@@ -7,7 +7,7 @@ like {2,}) and dollar signs (regex anchors) in the SQL are left untouched.
 Example template (sql/bigquery/events.sql):
 
     SELECT ...
-    FROM `{{dataset}}.{{table}}`
+    FROM `{{DATASET}}.{{TABLE}}`
     WHERE _TABLE_SUFFIX BETWEEN '{{start_date}}' AND '{{end_date}}'
 '''
 
@@ -19,15 +19,21 @@ from pathlib import Path
 
 from ga4_ecommerce_analytics_engine.constants import (
     DATASET,
-    TABLE,
-    REGEX_BASE_URL,
-    REGEX_QUERY_PARAMS,
+    TABLE
 )
 
 # <repo root>/sql/bigquery, resolved from src/<package>/sources/query_loader.py
-DEFAULT_SQL_DIR = Path(__file__).resolve().parents[3] / "sql" / "bigquery"
+repo_root = Path(__file__).resolve().parents[3] 
+DEFAULT_SQL_DIR = repo_root / "sql" / "bigquery"
 
-_PLACEHOLDER = re.compile(r"\{\{\s*(\w+)\s*\}\}")
+# Regex to capture any text inside curly brackets (e.g., {DATASET}, {TABLE}, {start_date}, {end_date}):
+    # • \{\{: Matches a literal pair of opening curly braces {{.
+    # • \s*: Optional spaces inside the braces.
+    # • ([^}]+): Captures everything inside until it hits a closing brace (you can also use ([\w.]+) if you want to strictly limit it to word characters and dots).
+    # • \s*: Optional spaces before the closing braces.
+    # • \}\}: Matches a literal pair of closing curly braces }}.
+_PLACEHOLDER = re.compile(r"\{\{\s*([^}]+)\s*\}\}")
+
 
 
 class QueryLoader:
@@ -39,17 +45,13 @@ class QueryLoader:
         self,
         sql_dir: Path | str = DEFAULT_SQL_DIR,
         dataset: str = DATASET,
-        table: str = TABLE,
-        regex_base_url: str = REGEX_BASE_URL,
-        regex_query_params: str = REGEX_QUERY_PARAMS,
+        table: str = TABLE
     ) -> None:
 
         self.sql_dir = Path(sql_dir)
         self._default = {
-            'dataset': dataset,
-            'table': table,
-            'regex_base_url': regex_base_url,
-            'regex_query_params': regex_query_params,
+            'DATASET': dataset,
+            'TABLE': table
         }
         self._cache: dict[str, str] = {}
 
@@ -63,7 +65,7 @@ class QueryLoader:
 
     def load(self, name: str) -> str:
         '''
-        Read the raw, unrendered text of a template (e.g., 'events').
+        Read the raw, unrendered text of a template (i.e., 'events').
         '''
         if name not in self._cache:
             path = self.sql_dir / f"{name}.sql"
@@ -100,10 +102,10 @@ class QueryLoader:
         start = self._to_table_suffix(start_date)
         end = self._to_table_suffix(end_date)
         if start > end:
-            raise ValueError(f"start_date ({start}) is after end_date ({end_date}).")
+            raise ValueError(f"start_date ({start_date}) is after end_date ({end_date}).")
 
 
-        values = {**self._defaults, **extra, 'start_date': start, 'end_date': end}
+        values = {**self._default, **extra, 'start_date': start, 'end_date': end}
         text = self.load(name)
 
         def substitute(match: re.Match[str]) -> str:

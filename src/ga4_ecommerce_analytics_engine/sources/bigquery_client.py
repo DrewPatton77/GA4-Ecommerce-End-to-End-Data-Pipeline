@@ -104,7 +104,7 @@ class BigQueryClient:
             config.query_parameters = list(query_parameters)
         if not dry_run:
             # Safety cap: returns error if job 
-            config.maximum_bytes_billed = self.maximum_bytes_billed
+            config.maximum_bytes_billed = int(self.maximum_bytes_billed * BYTES_PER_GB) # Convert from GB to bytes
         return config
 
     # ---- Cost ----------------------------
@@ -147,7 +147,7 @@ class BigQueryClient:
         '''
         Compare bytes to budget bytes.
         '''
-        return bytes_scanned <= self.maximum_bytes_billed * BYTES_PER_GB
+        return bytes_scanned / BYTES_PER_GB <= self.maximum_bytes_billed
 
     # ---- Running queries ----------------------------
 
@@ -172,7 +172,7 @@ class BigQueryClient:
             if not estimate.is_within_budget:
                 raise BudgetExceededError(
                     f"Estimated scan of {estimate.gb_scanned:.2f} GB exceeds the cap of "
-                    f"{self.maximum_bytes_billed / BYTES_PER_GB:.2f} GB."
+                    f"{self.maximum_bytes_billed * BYTES_PER_GB:.2f} GB."
                 )
 
         job_config = self._build_job_config(dry_run=False, query_parameters=query_parameters)
