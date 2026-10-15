@@ -251,7 +251,7 @@ class DataCleaner:
         '''
         Non-purchase item rows appended to the cleaned purchase item rows.
         '''
-        non_purchase = raw_items.filter(pl.col(self.event_type) != self.conversion)
+        non_purchase = raw_items.filter(pl.col(self.event_type).ne(self.conversion))
         return pl.concat([non_purchase, purchase_items], how='diagonal_relaxed')
 
     # ---- Main ----------------------------------------------------
