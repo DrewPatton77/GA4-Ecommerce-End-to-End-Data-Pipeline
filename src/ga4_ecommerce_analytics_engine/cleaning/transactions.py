@@ -1,19 +1,5 @@
 '''
-Clean raw GA4 transaction event data.
-
-Input:
-    - session_id: the raw GA session id (an integer), NOT the combined
-    '<user>-<session>' string. This module builds the combined id once, here.
-    - event_timestamp_micros: a timestamp, or integer microseconds since epoch.
-    - items also carry: item_name, item_revenue, quantity, and (optionally) the
-      event-level columns listed in EVENT_CONTEXT_COLUMNS.
-
-Output:
-    - events: every non-purchase event, plus one aggregated purchase event per
-      transaction (event_value, basket_size, unique_items), sorted by user and
-      time, with a conversion_timestamp column.
-    - items: every non-purchase item row, plus the deduplicated purchase item
-      rows with a transaction_id. All rows use the combined session_id.
+Clean raw GA4 transaction event and transaction item event data.
 '''
 
 from __future__ import annotations
@@ -24,27 +10,14 @@ from dataclasses import dataclass, fields
 
 import polars as pl
 
+from ga4_ecommerce_analytics_engine.schema.schema import DatasetSchema
+
 logger = logging.getLogger(__name__)
 
 # Store the cleaned data in a class for easy access.
 class CleanedData(NamedTuple):
     events: pl.DataFrame
     items: pl.DataFrame
-
-@dataclass(frozen=True)
-class RequiredColumnsConfig:
-    '''
-    Change required column names for data flexibility.
-    '''
-    timestamp: str = 'event_timestamp_micros'
-    user_id: str = 'user_pseudo_id'
-    session_id: str = 'session_id'
-    item_id: str = 'item_name'
-    transaction_id: str = 'transaction_id'
-    event_type: str = 'event_name'
-    conversion: str = 'purchase'
-    item_value: str = 'item_revenue'
-    item_quantity: str = 'item_quantity'
 
 class DataCleaner:
     def __init__(self, **config_overrides) -> None:
@@ -53,7 +26,7 @@ class DataCleaner:
         which accepts optional column names to override the config.
         '''
         # Composition over inheritance.
-        config = RequiredColumnsConfig(**config_overrides)
+        config = DatasetSchema(**config_overrides)
 
         self.timestamp = config.timestamp
         self.user_id = config.user_id
