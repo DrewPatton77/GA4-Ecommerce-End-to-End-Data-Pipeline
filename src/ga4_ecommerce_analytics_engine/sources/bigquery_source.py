@@ -82,7 +82,7 @@ class BigQuerySource(BaseSource):
 
             logger.info(f"Total estimate: ~${total_cad:.4f} CAD, {total_gb:.2f} GB")
 
-            return estimates
+        return estimates
 
     # ---- Internals ----------------------------------------------
 

@@ -122,12 +122,14 @@ class QueryLoader:
     # ---- Helpers --------------------------------------
 
     @staticmethod
-    def _to_table_suffix(value: str | date | datetime) -> str:
+    def _to_table_suffix(value: str | date | datetime | int) -> str:
         '''
         Convert a date to the YYYYMMDD form BigQuery's _TABLE_SUFFIX expects.
 
         A wrongly formatted date silently matches no tables, so reject it here.
         '''
+        if isinstance(value, int):
+            value = str(value)
         if isinstance(value, datetime):
             return value.strftime('%Y%m%d')
         if isinstance(value, date):

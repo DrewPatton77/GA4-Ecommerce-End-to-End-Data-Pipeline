@@ -75,9 +75,9 @@ class BigQueryClient:
     ) -> None:
         
         self.project_id = project_id
-        self.usd_to_cad_exchange_rate = usd_to_cad_exchange_rate
-        self.ondemand_pricing = ondemand_pricing
-        self.maximum_bytes_billed = maximum_bytes_billed
+        self.usd_to_cad_exchange_rate = float(usd_to_cad_exchange_rate)
+        self.ondemand_pricing = float(ondemand_pricing)
+        self.maximum_bytes_billed = int(maximum_bytes_billed)
         self._client: bigquery.Client | None = None
 
     # --- Internals -------------------------
