@@ -44,7 +44,7 @@ class RequiredColumnsConfig:
     event_type: str = 'event_name'
     conversion: str = 'purchase'
     item_value: str = 'item_revenue'
-    item_quantity: str = 'quantity'
+    item_quantity: str = 'item_quantity'
 
 class DataCleaner:
     def __init__(self, **config_overrides) -> None:
