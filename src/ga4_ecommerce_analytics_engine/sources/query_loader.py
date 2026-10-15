@@ -126,7 +126,7 @@ class QueryLoader:
         '''
         Convert a date to the YYYYMMDD form BigQuery's _TABLE_SUFFIX expects.
 
-        A wrongly formatted date silently matches no tables, so reject it here.
+        A wrong format does not match the tables, so we deal with it here.
         '''
         if isinstance(value, int):
             value = str(value)

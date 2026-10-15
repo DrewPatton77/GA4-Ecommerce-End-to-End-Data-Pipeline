@@ -14,7 +14,7 @@ from pathlib import Path
 import polars as pl
 
 from ga4_ecommerce_analytics_engine.sources.base import BaseSource, DateLike
-from ga4_ecommerce_analytics_engine.sources.bigquery_client import BigQueryClient, CostEstimate
+from ga4_ecommerce_analytics_engine.sources.bigquery_client import BigQueryClient, CostEstimate, Columns
 from ga4_ecommerce_analytics_engine.sources.query_loader import QueryLoader
 
 logger = logging.getLogger(__name__)
@@ -65,6 +65,26 @@ class BigQuerySource(BaseSource):
     def fetch_dimensions(self, start_date: DateLike, end_date: DateLike) -> pl.DataFrame:
         return self._fetch(DIMENSIONS_QUERY, start_date, end_date)
 
+    # --- Column validation ---------------------------------------------
+    
+    def validate_columns(self, start_date: DateLike, end_date: DateLike) -> None:
+        '''
+        Dry-run all three queries and return each of their columns, keyed by query name.
+
+        Nothing is billed.
+        '''
+        columns = {}
+        for name in (EVENTS_QUERY, ITEMS_QUERY, DIMENSIONS_QUERY):
+            query = self.loader.render(name, start_date, end_date)
+            columns[name] = self.client.columns(query)
+
+        for column in columns[EVENTS_QUERY].columns:
+            if not column in columns[ITEMS_QUERY].columns:
+                raise KeyError(
+                    f"Missing column in {ITEMS_QUERY} query: {column}"
+                    f"All {EVENTS_QUERY} query columns should be in the {ITEMS_QUERY} query."
+                )
+
     # ---- Cost -----------------------------------------------
 
     def estimate_cost(self, start_date: DateLike, end_date: DateLike) -> dict[str, CostEstimate]:
@@ -80,7 +100,7 @@ class BigQuerySource(BaseSource):
             total_cad = sum(e.cost_usd for e in estimates.values())
             total_gb = sum(e.gb_scanned for e in estimates.values())
 
-            logger.info(f"Total estimate: ~${total_cad:.4f} CAD, {total_gb:.2f} GB")
+            logger.info("Total estimate:  ~$%.4f CAD, %.2f GB", total_cad, total_gb)
 
         return estimates
 
@@ -94,10 +114,10 @@ class BigQuerySource(BaseSource):
         cache_path = self._cache_path(name, query)
 
         if self.use_cache and not self.refresh and cache_path.is_file():
-            logger.info(f"Reading {name} from cache:")
+            logger.info(f"Reading '%s' from cache: %s", name, cache_path)
             return pl.read_parquet(cache_path)
 
-        logger.info('Running {name} query against BigQuery')
+        logger.info("Running '%s' query against BigQuery", name)
         df = self.client.run_query(query)
 
         if self.use_cache:
@@ -118,7 +138,7 @@ class BigQuerySource(BaseSource):
     def _write_cache(self, df: pl.DataFrame, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         df.write_parquet(path)
-        logger.info(f"Cached {df.height} rows to {path}")
+        logger.info("Cached %d rows to %s", df.height, path)
 
     
     

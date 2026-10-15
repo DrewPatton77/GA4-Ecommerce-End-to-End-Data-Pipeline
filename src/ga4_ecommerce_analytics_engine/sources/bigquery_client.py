@@ -39,6 +39,10 @@ class BudgetExceededError(RuntimeError):
     Raised when a query's estimated scan is larger than the configured cap.
     '''
 
+@dataclass(frozen=True)
+class Columns:
+    columns: str
+
 @dataclass(frozen=True) # to make hashable.
 class CostEstimate:
     '''
@@ -106,6 +110,28 @@ class BigQueryClient:
             # Safety cap: returns error if job 
             config.maximum_bytes_billed = int(self.maximum_bytes_billed * BYTES_PER_GB) # Convert from GB to bytes
         return config
+
+    # --- Extract columns names
+
+    def columns(
+        self,
+        query: str,
+        query_parameters: Sequence[bigquery.ScalarQueryParameter] | None = None
+    ) -> Columns:
+        '''
+        Dry-run a query and extract the columns for validation.
+        '''
+        # Dry run
+        job_config = self._build_job_config(dry_run=True, query_parameters=query_parameters)
+        job = self.client.query(query, job_config=job_config)
+
+        # Access schema
+        dry_run_properties = job._job_statistics()
+        schema_fields = dry_run_properties.get("schema", {}).get("fields", [])
+
+        # Extract column names
+        return Columns([field['name'] for field in schema_fields])
+        
 
     # ---- Cost ----------------------------
 
