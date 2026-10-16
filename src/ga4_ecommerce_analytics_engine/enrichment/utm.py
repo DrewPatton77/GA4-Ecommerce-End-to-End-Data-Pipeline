@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 from typing import NamedTuple
-from dataclasses import dataclass
 import logging
 
 import polars as pl
 
-from ga4_ecommerce_analytics_engine.schema.schema import Schema
+from ga4_ecommerce_analytics_engine.schema import DataSchema
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class UtmResult(NamedTuple):
 
 class DataUtm:
     def __init__(self, **config_overrides) -> None:
-        config = Schema(**config_overrides)
+        config = DataSchema(**config_overrides)
 
         # required columns
         self.user_id = config.user_id
@@ -79,7 +78,7 @@ class DataUtm:
 
     def resolve_session_utm(self, cleaned_events: pl.DataFrame) -> pl.DataFrame:
         self._check_required_columns(cleaned_events)
-        
+
         ranked = cleaned_events.with_columns(
             pl.col(self.event_type).is_in(self.init_events).cast(pl.Int8).alias('_is_initialization'),
             pl.col(self.source).is_null().cast(pl.Int8).alias('_source_is_null'),

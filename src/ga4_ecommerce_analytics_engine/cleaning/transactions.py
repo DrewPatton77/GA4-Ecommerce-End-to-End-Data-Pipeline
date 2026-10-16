@@ -10,7 +10,7 @@ from dataclasses import dataclass, fields
 
 import polars as pl
 
-from ga4_ecommerce_analytics_engine.schema.schema import Schema
+from ga4_ecommerce_analytics_engine.schema import DataSchema
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class DataCleaner:
         which accepts optional column names to override the config.
         '''
         # Composition over inheritance.
-        config = Schema(**config_overrides)
+        config = DataSchema(**config_overrides)
 
         # required columns
         self.timestamp = config.timestamp
