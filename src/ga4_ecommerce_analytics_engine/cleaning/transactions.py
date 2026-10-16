@@ -65,13 +65,14 @@ class DataCleaner:
         This will fail early and includes a readable message when the extract is missing any columns
         to ensures that the raw data matches the required columns config.
         '''
-        exclude_key = {self.conversion}
+        exclude_key = {'conversion'}
         
         required_cols = {
             value
             for key, value in vars(self).items()
             if key not in exclude_key and isinstance(value, str)
         }
+        logger.info("Transaction cleaning: The required columns are: %s", required_cols)
 
         missing_cols = required_cols - set(df.columns)
         if missing_cols:
