@@ -26,12 +26,6 @@ columns = src.validate_columns(start_date=START_DATE, end_date=END_DATE)
 # If costs look good, then it will run. The budget can be set in the config under: MAXIMUM_BYTES_BILLED (which is in units of gigabytes).
 raw_data = src.fetch_all(START_DATE, END_DATE) # Returns a RawData object containing the SQL queries ran.
 
-'''
- Data can be accessed using: raw_data.name, where <name> is the name of the sql file (without the .sql).
- for example,
-
- - raw_data.events, returns the events data as a polars dataframe.
- - raw_data.items, returns the items dataframe.
- - raw_data.dimensions, returns the dimensions dataframe.
-'''
-print(raw_data.events)
+print(f"Event columns: {raw_data.events.columns}")
+print(f"Items columns: {raw_data.items.columns}")
+print(f"Dimensions columns: {raw_data.dimensions.columns}")
