@@ -35,7 +35,7 @@ ITEM_SCHEMA = {
     'event_name': pl.Utf8,
     'item_name': pl.Utf8,
     'item_revenue': pl.Float64,
-    'item_quantity': pl.Int64,
+    'quantity': pl.Int64,
     'transaction_id': pl.Utf8,
     'event_date': pl.Date,
 }
@@ -128,7 +128,7 @@ def test_custom_column_names_work_end_to_end():
         'event_name': 'evt',
         'item_name': 'product',
         'item_revenue': 'revenue',
-        'item_quantity': 'qty',
+        'quantity': 'qty',
         'transaction_id': 'txn'
     }
 
@@ -158,8 +158,8 @@ def test_custom_column_names_work_end_to_end():
 # --- Individual steps --------------------------------------
 
 def test_missing_item_column_raises_a_readable_error():
-    with pytest.raises(KeyError, match='item_quantity'):
-        DataCleaner().clean_transactions(make_events(), make_items().drop('item_quantity'))
+    with pytest.raises(KeyError, match='quantity'):
+        DataCleaner().clean_transactions(make_events(), make_items().drop('quantity'))
 
 def test_composite_session_id_is_safe_to_apply_twice():
     cleaner = DataCleaner()
