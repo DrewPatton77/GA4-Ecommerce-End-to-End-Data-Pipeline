@@ -6,4 +6,9 @@ END_DATE: str = '20210131' # January. 31, 2021. End of dataset
 BYTES_PER_TB = 1e12
 BYTES_PER_GB = 1e9
 
+# Channels
+UNCLASSIFIED = "Unclassified"
+SOURCE = 'source_utm'
+MEDIUM = 'medium_utm'
+CAMPAIGN = 'campaign_utm'
 
