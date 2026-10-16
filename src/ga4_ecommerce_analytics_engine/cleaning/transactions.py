@@ -10,7 +10,7 @@ from dataclasses import dataclass, fields
 
 import polars as pl
 
-from ga4_ecommerce_analytics_engine.schema.schema import DatasetSchema
+from ga4_ecommerce_analytics_engine.schema.schema import Schema
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +26,20 @@ class DataCleaner:
         which accepts optional column names to override the config.
         '''
         # Composition over inheritance.
-        config = DatasetSchema(**config_overrides)
+        config = Schema(**config_overrides)
 
+        # required columns
         self.timestamp = config.timestamp
         self.user_id = config.user_id
         self.session_id = config.session_id
         self.item_id = config.item_id
         self.transaction_id = config.transaction_id
         self.event_type = config.event_type
-        self.conversion = config.conversion
         self.item_value = config.item_value
         self.item_quantity = config.item_quantity
+
+        # required conversion
+        self.conversion = config.conversion
     
     @property
     def deduplication_keys(self) -> list[str]:
@@ -62,7 +65,7 @@ class DataCleaner:
         This will fail early and includes a readable message when the extract is missing any columns
         to ensures that the raw data matches the required columns config.
         '''
-        exclude_key = {'conversion'}
+        exclude_key = {self.conversion}
         
         required_cols = {
             value
