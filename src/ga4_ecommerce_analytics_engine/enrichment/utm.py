@@ -7,7 +7,6 @@ import logging
 import polars as pl
 
 from ga4_ecommerce_analytics_engine.schema import DataSchema
-from ga4_ecommerce_analytics_engine.utils.validation import check_required_columns
 
 logger = logging.getLogger(__name__)
 
@@ -23,22 +22,7 @@ class UtmResult(NamedTuple):
     sessions: pl.DataFrame # one row per session with sources
 
 
-class DataUtm():
-    def __init__(self, **config_overrides) -> None:
-        config = DataSchema(**config_overrides)
-
-        # required columns
-        self.user_id = config.user_id
-        self.session_id = config.session_id
-        self.timestamp = config.timestamp
-        self.event_type = config.event_type
-        self.source = config.source
-        self.medium = config.medium
-        self.campaign = config.campaign
-
-        # required events
-        self.session_start = config.session_start
-        self.first_visit = config.first_visit
+class DataUtm(DataSchema):
 
     @property
     def init_events(self) -> list[str]:
@@ -56,10 +40,10 @@ class DataUtm():
         ]
 
     def resolve_session_utm(self, cleaned_events: pl.DataFrame) -> pl.DataFrame:
-        check_required_columns(
-            self,
+        self.check_required_columns(
             cleaned_events,
-            required_values = {'session_start', 'first_visit'}
+            required_values = {self.session_start, self.first_visit},
+            required_columns= {self.user_id, self.session_id, self.source, self.medium, self.campaign}
             )
 
         ranked = cleaned_events.with_columns(

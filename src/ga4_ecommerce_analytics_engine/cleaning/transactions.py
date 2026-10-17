@@ -11,36 +11,16 @@ from dataclasses import dataclass, fields
 import polars as pl
 
 from ga4_ecommerce_analytics_engine.schema import DataSchema
-from ga4_ecommerce_analytics_engine.utils.validation import check_required_columns
 
 logger = logging.getLogger(__name__)
+
 
 # Store the cleaned data in a class for easy access.
 class CleanedData(NamedTuple):
     events: pl.DataFrame
     items: pl.DataFrame
 
-class DataCleaner:
-    def __init__(self, **config_overrides) -> None:
-        '''
-        Initializes the cleaner with the required columns config,
-        which accepts optional column names to override the config.
-        '''
-        # Composition over inheritance.
-        config = DataSchema(**config_overrides)
-
-        # required columns
-        self.timestamp = config.timestamp
-        self.user_id = config.user_id
-        self.session_id = config.session_id
-        self.item_id = config.item_id
-        self.transaction_id = config.transaction_id
-        self.event_type = config.event_type
-        self.item_value = config.item_value
-        self.item_quantity = config.item_quantity
-
-        # required conversion
-        self.conversion = config.conversion
+class DataCleaner(DataSchema):
     
     @property
     def deduplication_keys(self) -> list[str]:
@@ -217,7 +197,20 @@ class DataCleaner:
         Run every cleaning step and return the cleaned events and items.
         '''
         # --- Column Validation ----------------------------------
-        check_required_columns(self, raw_items, required_values={'conversion'}) # Checks whether the items dataframe contains ALL the required columns needed for deduplication.
+        self.check_required_columns( 
+            raw_items, 
+            required_values={self.conversion},
+            required_columns={
+                self.timestamp,
+                self.user_id,
+                self.session_id,
+                self.item_id,
+                self.transaction_id,
+                self.event_type,
+                self.item_value,
+                self.item_quantity,
+            }
+        ) # Checks whether the items dataframe contains ALL the required columns needed for deduplication.
 
         # --- Column normalization -------------------------------
         if composition_key:
