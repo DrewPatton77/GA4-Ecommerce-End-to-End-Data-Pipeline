@@ -7,6 +7,7 @@ import logging
 import polars as pl
 
 from ga4_ecommerce_analytics_engine.schema import DataSchema
+from ga4_ecommerce_analytics_engine.utils.validation import check_required_columns
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class UtmResult(NamedTuple):
     sessions: pl.DataFrame # one row per session with sources
 
 
-class DataUtm:
+class DataUtm():
     def __init__(self, **config_overrides) -> None:
         config = DataSchema(**config_overrides)
 
@@ -38,28 +39,6 @@ class DataUtm:
         # required events
         self.session_start = config.session_start
         self.first_visit = config.first_visit
-
-
-    def _check_required_columns(self, df: pl.DataFrame) -> None:
-        '''
-        This will fail early and includes a readable message when the extract is missing any columns
-        to ensures that the cleaned data matches the required columns config.
-        '''
-        exclude_key = {self.session_start, self.first_visit}
-        
-        required_cols = {
-            value
-            for key, value in vars(self).items()
-            if key not in exclude_key and isinstance(value, str)
-        }
-
-        missing_cols = required_cols - set(df.columns)
-        if missing_cols:
-            raise KeyError(
-                f"Pre-cleaning Schema Validation Failed. " 
-                f"The following required columns are missing from the events dataset: {missing_cols}"
-            )
-        logger.info("Schema validation passed. All required columns are in the events dataset.")
 
     @property
     def init_events(self) -> list[str]:
@@ -77,7 +56,11 @@ class DataUtm:
         ]
 
     def resolve_session_utm(self, cleaned_events: pl.DataFrame) -> pl.DataFrame:
-        self._check_required_columns(cleaned_events)
+        check_required_columns(
+            self,
+            cleaned_events,
+            required_values = {'session_start', 'first_visit'}
+            )
 
         ranked = cleaned_events.with_columns(
             pl.col(self.event_type).is_in(self.init_events).cast(pl.Int8).alias('_is_initialization'),

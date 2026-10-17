@@ -69,8 +69,6 @@ print(f"Rows after cleaning : {n_after} (dropped: {n_before - n_after} | {round(
 
 
 # - Main function is made up of these methods:
-# Schema Validation
-cleaner._check_required_columns(raw_data.items)
 
 # normalize timestamps to Datetime
 raw_events = cleaner.normalize_timestamps(raw_data.events)

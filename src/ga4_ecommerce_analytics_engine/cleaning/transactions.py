@@ -11,6 +11,7 @@ from dataclasses import dataclass, fields
 import polars as pl
 
 from ga4_ecommerce_analytics_engine.schema import DataSchema
+from ga4_ecommerce_analytics_engine.utils.validation import check_required_columns
 
 logger = logging.getLogger(__name__)
 
@@ -59,28 +60,6 @@ class DataCleaner:
         ]
 
     # ---- Validation and normalizing -------------------------------------------------------
-
-    def _check_required_columns(self, df: pl.DataFrame) -> None:
-        '''
-        This will fail early and includes a readable message when the extract is missing any columns
-        to ensures that the raw data matches the required columns config.
-        '''
-        exclude_key = {'conversion'}
-        
-        required_cols = {
-            value
-            for key, value in vars(self).items()
-            if key not in exclude_key and isinstance(value, str)
-        }
-        logger.info("Transaction cleaning: The required columns are: %s", required_cols)
-
-        missing_cols = required_cols - set(df.columns)
-        if missing_cols:
-            raise KeyError(
-                f"Pre-cleaning Schema Validation Failed. " 
-                f"The following required columns are missing from the items dataset: {missing_cols}"
-            )
-        logger.info("Schema validation passed. All required columns are in the items dataset.")
 
     def normalize_timestamps(self, df: pl.DataFrame) -> pl.DataFrame:
         '''
@@ -238,7 +217,7 @@ class DataCleaner:
         Run every cleaning step and return the cleaned events and items.
         '''
         # --- Column Validation ----------------------------------
-        self._check_required_columns(raw_items) # Checks whether the items dataframe contains ALL the required columns needed for deduplication.
+        check_required_columns(self, raw_items, required_values={'conversion'}) # Checks whether the items dataframe contains ALL the required columns needed for deduplication.
 
         # --- Column normalization -------------------------------
         if composition_key:
