@@ -87,17 +87,12 @@ class ChannelRule:
 
 # --- Short constructors so the channel rules read like a table -----
 
-def eq(field: str, value: str) -> Criterion:
-    return Criterion(field, 'equals', (value,))
 
-def is_in(field: str, *values: str) -> Criterion:
+def eq(field: str, *values: str) -> Criterion:
     return Criterion(field, "in", tuple(values))
 
 def contains(field: str, *fragments: str) -> Criterion:
     return Criterion(field, 'contains', tuple(fragments))
-
-def regex(field: str, pattern: str) -> Criterion:
-    return Criterion(field, 'regex', (pattern,))
 
 
 # ---- Main -----> EDIT HERE! DO NOT EDIT ABOVE THIS LINE <-------
@@ -142,13 +137,13 @@ class DataChannelRule:
                 'Organic Search',
                 (
                     eq(self.medium_utm, 'organic'),
-                    is_in(self.source_utm, 'google', 'baidu', 'ecosia.org', 'yahoo', 'bing'),
+                    eq(self.source_utm, 'google', 'baidu', 'ecosia.org', 'yahoo', 'bing'),
                 ),
             ),
             ChannelRule(
                 'Organic Social',
                 (
-                    is_in(
+                    eq(
                         self.source_utm,
                         "reddit",
                         "facebook",
@@ -163,7 +158,7 @@ class DataChannelRule:
             ChannelRule(
                 'Internal',
                 (
-                    is_in(
+                    eq(
                         self.source_utm,
                         'corp.google.com',
                         'docs.google.com',
@@ -180,9 +175,8 @@ class DataChannelRule:
             ChannelRule(
                 'Referral',
                 (
-                    regex(self.source_utm, r"\.com|\.net|\.org"),
+                    contains(self.source_utm, '.com', '.net', '.org'),
                     eq(self.medium_utm, 'referral'),
                 ),
-            ),
-        )
-        
+        ),
+    )

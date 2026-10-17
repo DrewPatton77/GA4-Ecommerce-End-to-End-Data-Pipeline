@@ -89,7 +89,7 @@ class DataChannelClassifier:
 
     @staticmethod
     def _criterion_expression(criterion: Criterion) -> pl.Expr:
-        column = pl.col(['source_utm', 'medium_utm', 'campaign_utm']) # This should either be kept here or editable in the schema.
+        column = pl.col(criterion.source) # This should either be kept here or editable in the schema.
         if criterion.operator == "equals":
             return column == criterion.values[0]
         if criterion.operator == "in":

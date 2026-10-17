@@ -77,3 +77,4 @@ print('\n Number and percent of channels')
 channel_summary = sessions_channel['channel'].value_counts().reset_index()
 channel_summary['percent of sessions'] = (channel_summary['count'] / channel_summary['count'].sum() * 100).round(2).astype(int).astype(str) + '%'
 print(channel_summary)
+print(f"\n {sessions_channel.shape}")
