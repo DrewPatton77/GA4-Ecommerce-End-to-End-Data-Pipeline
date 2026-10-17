@@ -26,6 +26,6 @@ columns = src.validate_columns(start_date=START_DATE, end_date=END_DATE)
 # If costs look good, then it will run. The budget can be set in the config under: MAXIMUM_BYTES_BILLED (which is in units of gigabytes).
 raw_data = src.fetch_all(START_DATE, END_DATE) # Returns a RawData object containing the SQL queries ran.
 
-print(f"Event columns: {raw_data.events.columns}")
-print(f"Items columns: {raw_data.items.columns}")
-print(f"Dimensions columns: {raw_data.dimensions.columns}")
+print(f"\nEvent columns: {raw_data.events.columns}")
+print(f"\nItems columns: {raw_data.items.columns}")
+print(f"\nDimensions columns: {raw_data.dimensions.columns}")

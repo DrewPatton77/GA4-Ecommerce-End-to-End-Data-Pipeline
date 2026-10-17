@@ -1,5 +1,3 @@
-"""Minimal tests for DataChannelClassifier (enrichment/channels.py), against the golden-matching rules."""
-
 from __future__ import annotations
 
 import polars as pl
