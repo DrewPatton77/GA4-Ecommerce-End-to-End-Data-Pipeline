@@ -10,12 +10,6 @@ from ga4_ecommerce_analytics_engine.schema import DataSchema
 
 logger = logging.getLogger(__name__)
 
-INITIALIZATION_EVENTS = ('session_start', 'first_visit')
-
-SOURCE_UTM = 'source_utm'
-MEDIUM_UTM = 'medium_utm'
-CAMPAIGN_UTM = 'campaign_utm'
-
 
 class UtmResult(NamedTuple):
     events: pl.DataFrame # every event with sources
@@ -55,9 +49,9 @@ class DataUtm(DataSchema):
         )
 
         return ranked.group_by(self.session_id, maintain_order=True).agg(
-            pl.col(self.source).drop_nulls().first().alias('source_utm'),
-            pl.col(self.medium).drop_nulls().first().alias('medium_utm'),
-            pl.col(self.campaign).drop_nulls().first().alias('campaign_utm')
+            pl.col(self.source).drop_nulls().first().alias(self.source_utm),
+            pl.col(self.medium).drop_nulls().first().alias(self.medium_utm),
+            pl.col(self.campaign).drop_nulls().first().alias(self.campaign_utm)
         )
 
     def attach_utm_to_events(self, cleaned_events: pl.DataFrame, session_utm: pl.DataFrame) -> pl.DataFrame:
