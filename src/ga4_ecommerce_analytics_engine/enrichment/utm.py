@@ -21,7 +21,7 @@ class DataUtm(DataSchema):
     @property
     def init_events(self) -> list[str]:
         return [
-            self.session_start,
+            self.session_start_event,
             self.first_visit
         ]
 
@@ -36,7 +36,7 @@ class DataUtm(DataSchema):
     def resolve_session_utm(self, cleaned_events: pl.DataFrame) -> pl.DataFrame:
         self.check_required_columns(
             cleaned_events,
-            required_values = {self.session_start, self.first_visit},
+            required_values = {self.session_start_event, self.first_visit},
             required_columns= {self.user_id, self.session_id, self.source, self.medium, self.campaign}
             )
 

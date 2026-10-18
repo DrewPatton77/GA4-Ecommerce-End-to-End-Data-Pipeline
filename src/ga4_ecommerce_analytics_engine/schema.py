@@ -43,7 +43,6 @@ class DataSchema:
     item_id: str = "item_name"
     item_value: str = "item_revenue"
     item_quantity: str = "quantity"
-    transaction_id: str = "transaction_id"
 
 
     # --- Session Scope:
@@ -55,8 +54,9 @@ class DataSchema:
     session_start_timestamp: str = 'session_start'
     session_date: str = 'session_date'
     session_engagement_time: str = 'engagement_time'
-    session_engaged: str = 'session_engaged'
     event_count: str = 'event_count'
+    converted: str = 'converted'
+    session_value: str = 'value'
 
     conversions_in_session: str = 'conversions_in_session'
 
@@ -65,10 +65,30 @@ class DataSchema:
     source_utm: str = 'source_utm'
     medium_utm: str = 'medium_utm'
     campaign_utm: str = 'campaign_utm'
+    channel: str = 'channel'
 
-    #
+    # Counts
+    page_views: str = 'page_views'
+    item_views: str = 'item_views'
+    carts: str = 'carts'
+    checkouts: str = 'checkouts'
 
-
+    # --- Journey Scope:
+    journey_id: str = 'journey_id'
+    hours_before_conversion: str = 'hours_before'
+    has_conversion: str = 'has_conversion'
+    conversion_path: str = 'conversion_path'
+    channel_set: str = 'channel_set'
+    journey_start_timestamp: str = 'journey_start'
+    journey_end_timestamp: str = 'journey_end'
+    timestamp_path: str = 'timestamp_path'
+    conversion_count: str = 'conversion_count'
+    conversion_value: str = 'conversion_value_usd'
+    touchpoints: str = 'touchpoints'
+    journey_duration: str = 'duration'
+    touchpoint_count: str = 'touchpoint_count'
+    path_to_conversion: str = 'path_to_conversion'
+    hours_path: str = 'hours_path'
     
     # ---- Event type values. ----> Edit for different column value names. <--------------
     
@@ -76,7 +96,7 @@ class DataSchema:
     conversion: str = "purchase"  
 
     # Fires when a session is started
-    session_start: str = 'session_start'
+    session_start_event: str = 'session_start'
     first_visit: str = 'first_visit'
 
     # Event funnel
@@ -85,24 +105,25 @@ class DataSchema:
     add_to_cart: str = 'add_to_cart'
     begin_checkout: str = 'begin_checkout'
 
-    def check_required_columns(self, df: pl.DataFrame, required_values: dict[str], required_columns: dict[str]) -> None:
+    def check_required_columns(self, df: pl.DataFrame, required_values: set[str] | None = None, required_columns: set[str] | None = None) -> None:
         '''
         This will fail early and includes a readable message when the extract is missing any columns
         to ensure that the data matches the required columns schema.
         '''
-        
-        missing_cols = required_columns - set(df.columns)
+
+        missing_cols = set(required_columns or ()) - set(df.columns)
         if missing_cols:
             raise KeyError(
                 f" Schema Validation Failed. " 
-                f"The following required columns are missing from the input dataframe: {missing_cols}"
+                f"Thes following required columns are missing from the input dataframe: {sorted(missing_cols)}"
             )
-        
-        missing_vals = required_values in df.select(pl.col(self.event_type).unique())
-        if missing_vals:
-            raise ValueError(
-                f"Session-aggregation Schema Validation Failed. "
-                f"The following required event type values are missing from the input dataframe: {missing_vals}"
-            )
-        logger.info("Schema validation passed. All required columns and values are in the input dataframe.")
+
+        if required_values != None:
+            missing_vals = set(required_values) - set(df.get_column(self.event_type).unique().to_list())
+            if missing_vals:
+                raise ValueError(
+                    f"Session-aggregation Schema Validation Failed. "
+                    f"The following required event type values are missing from the input dataframe: {sorted(missing_vals)}"
+                )
+        logger.info("Schema validation passed.")
         
