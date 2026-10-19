@@ -54,8 +54,8 @@ sessions_channel = channel_classifier.classify(utm_data.sessions)
 
 
 # --- Session & Journey Aggregation
-from ga4_ecommerce_analytics_engine.aggregating.sessions import SessionBuilder
-from ga4_ecommerce_analytics_engine.aggregating.journeys import JourneyBuilder
+from ga4_ecommerce_analytics_engine.aggregation.sessions import SessionBuilder
+from ga4_ecommerce_analytics_engine.aggregation.journeys import JourneyBuilder
 
 session_builder = SessionBuilder()
 sessions = session_builder.build(utm_data.events, sessions_channel)
