@@ -1,0 +1,24 @@
+# Postgres for the POWER BI star schema.
+#   cp .env.example .env    (then set a real password)
+#   docker compose up -d
+# Reach it from another machine (e.g., over Tailscale) at <this machine's Tailscale name:5432.
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ga4}
+      POSTGRES_USER: ${POSTGRES_USER:-ga4}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+    - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+    - pgdata:/var/lib/postgresql/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ga4}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
