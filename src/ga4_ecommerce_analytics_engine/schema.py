@@ -189,4 +189,4 @@ class DataSchema:
                     f'The following required event type values are missing from the input dataframe: {sorted(missing_vals)}'
                 )
 
-        logger.info('Schema validation passed.')
+        #logger.info('Schema validation passed.')
