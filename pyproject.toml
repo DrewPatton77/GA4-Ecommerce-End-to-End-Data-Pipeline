@@ -10,6 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "google-cloud==0.34.0",
     "google-cloud-bigquery[bqstorage,pyarrow]==3.43.0",
+    "networkx==3.6.1",
     "pandas==3.0.6",
     "polars==1.44.2",
     "python-dotenv==1.2.4",
@@ -26,3 +27,6 @@ build-backend = "uv_build"
 dev = [
     "pytest==9.1.1",
 ]
+
+[projects.scripts]
+ga4-pipeline = "ga4_ecommerce_analytics_engine.cli:main"
