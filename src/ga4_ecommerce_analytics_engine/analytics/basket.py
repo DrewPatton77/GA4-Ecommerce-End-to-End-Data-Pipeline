@@ -198,8 +198,7 @@ class BasketAnalyzer(DataSchema):
                 pl.col(self.consequent).replace_strict(membership, return_dtype=pl.Int64),
             ).alias(self.community)
         )
-        g = nx.DiGraph(); g.add_edge("A", "B", lift=1.3, transactions=2)
-        print(nx.community.louvain_communities(g, seed=42)) 
+        
         return baskets.join(
             strong.select(self.basket, self.community), on=self.basket, how="left", maintain_order="left"
         )
