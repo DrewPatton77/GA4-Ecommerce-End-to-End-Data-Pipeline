@@ -12,11 +12,11 @@ resolution-markers = [
 
 [[package]]
 name = "certifi"
-version = "2026.7.22"
+version = "2026.10.18"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a3/c2/24167ea9858356b47a87a50d39908bfdb72ceeefe0041586e704e5376b3a/certifi-2026.7.22.tar.gz", hash = "sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55", size = 138112, upload-time = "2026-07-22T03:35:12.644Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/eb/a2aa1ac3ea30dd3f30ca57f40232138b6b0040719316ecb85daf61167771/certifi-2026.10.18.tar.gz", hash = "sha256:b9995d97b64d0431a5af837d8ca8cd6238104d1f319f04bd93ea43124d6c861e", size = 135227, upload-time = "2026-10-18T16:21:07.655Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl", hash = "sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775", size = 136983, upload-time = "2026-07-22T03:35:11.276Z" },
+    { url = "https://files.pythonhosted.org/packages/08/ba/95dd616042484f7c83a06974388b37b837732740ee70bc5dc715b5fcd55a/certifi-2026.10.18-py3-none-any.whl", hash = "sha256:73191c47aaa79da394e8fee2dbc2ec827432cab56311122c9e47abf79e390f62", size = 134093, upload-time = "2026-10-18T16:21:06.276Z" },
 ]
 
 [[package]]
@@ -285,11 +285,12 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "google-cloud" },
-    { name = "google-cloud-bigquery", extra = ["bqstorage"] },
+    { name = "google-cloud-bigquery" },
     { name = "networkx" },
     { name = "pandas" },
     { name = "polars" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "pyarrow" },
     { name = "python-dotenv" },
 ]
 
@@ -301,11 +302,12 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "google-cloud", specifier = "==0.34.0" },
-    { name = "google-cloud-bigquery", extras = ["bqstorage", "pyarrow"], specifier = "==3.43.0" },
+    { name = "google-cloud-bigquery", specifier = ">=3.46.2" },
     { name = "networkx", specifier = "==3.6.1" },
     { name = "pandas", specifier = "==3.0.6" },
     { name = "polars", specifier = "==1.44.2" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
+    { name = "pyarrow", specifier = ">=26.0.0" },
     { name = "python-dotenv", specifier = "==1.2.4" },
 ]
 
@@ -364,7 +366,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-bigquery"
-version = "3.43.0"
+version = "3.46.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core", extra = ["grpc"] },
@@ -375,32 +377,9 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/a2/5ee4a9eae62dbd61e59504458d5cf870809f790ed136967d94c294b9a3ba/google_cloud_bigquery-3.43.0.tar.gz", hash = "sha256:e3dc25ab9ac8b2b089408493177d4d4508b098c80c3931786fbc20b075298fe6", size = 519709, upload-time = "2026-08-06T06:24:11.919Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/df/1b6f6fa4c119babcbbd002826a0a24ac287066808fbc873e7733b5ecc2bf/google_cloud_bigquery-3.46.2.tar.gz", hash = "sha256:a87e2e8026133e709deab9ebf537a6a2eee3fbcf4befa334a2f9f6164435b331", size = 530538, upload-time = "2026-10-15T17:49:37.245Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/c0/f491506bdff4d73750f74cf18fea7d6ca409ada2f81c4c4d10a32edf5688/google_cloud_bigquery-3.43.0-py3-none-any.whl", hash = "sha256:a39217f14f215472ce9da816f20ebaf77fdb1db7ccdc8360772d8bf6bafb55c2", size = 265159, upload-time = "2026-08-06T06:23:04.281Z" },
-]
-
-[package.optional-dependencies]
-bqstorage = [
-    { name = "google-cloud-bigquery-storage" },
-    { name = "grpcio" },
-    { name = "pyarrow" },
-]
-
-[[package]]
-name = "google-cloud-bigquery-storage"
-version = "2.42.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "google-api-core", extra = ["grpc"] },
-    { name = "google-auth" },
-    { name = "grpcio" },
-    { name = "proto-plus" },
-    { name = "protobuf" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ce/bd/d1d0e6aeb92e339715d99db149fb5ae5b9adb7ba904fdaec273fc7af7a7f/google_cloud_bigquery_storage-2.42.0.tar.gz", hash = "sha256:98f6c870f4a61f73d29ee12e30e64e9bc651ab8aa6d487c0c13c296f67878e7c", size = 310972, upload-time = "2026-10-01T18:15:15.111Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/05/737e43878f63d07c19bc26b8d7763dfa482cdd440b221d9dbefe22af352e/google_cloud_bigquery_storage-2.42.0-py3-none-any.whl", hash = "sha256:eebb5751125eb692cde0a7f22b9432eb656662daa95bde9439ad3252d5e19cc5", size = 309652, upload-time = "2026-10-01T18:08:41.351Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/ba/e89552c32a1cd5483261483c303da560e6504365d7314ecd88216ff9e119/google_cloud_bigquery-3.46.2-py3-none-any.whl", hash = "sha256:5e9a4e15f778cc00ee88167de9934a4c1bbb7fc20058e8f573f2bfdaf0d99052", size = 269195, upload-time = "2026-10-15T17:49:06.152Z" },
 ]
 
 [[package]]

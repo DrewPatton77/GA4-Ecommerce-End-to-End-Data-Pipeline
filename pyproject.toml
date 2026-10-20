@@ -9,16 +9,18 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "google-cloud==0.34.0",
-    "google-cloud-bigquery[bqstorage,pyarrow]==3.43.0",
+    "google-cloud-bigquery>=3.46.2",
     "networkx==3.6.1",
     "pandas==3.0.6",
     "polars==1.44.2",
     "psycopg[binary]>=3.3.6",
+    "pyarrow>=26.0.0",
     "python-dotenv==1.2.4",
 ]
 
 [project.scripts]
 ga4-ecommerce-analytics-engine = "ga4_ecommerce_analytics_engine:main"
+ga4-pipeline = "ga4_ecommerce_analytics_engine.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.0,<0.13.0"]
@@ -28,6 +30,3 @@ build-backend = "uv_build"
 dev = [
     "pytest==9.1.1",
 ]
-
-[projects.scripts]
-ga4-pipeline = "ga4_ecommerce_analytics_engine.cli:main"

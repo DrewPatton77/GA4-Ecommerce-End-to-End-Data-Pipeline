@@ -1,7 +1,8 @@
-# Postgres for the POWER BI star schema.
-#   cp .env.example .env    (then set a real password)
-#   docker compose up -d
-# Reach it from another machine (e.g., over Tailscale) at <this machine's Tailscale name:5432.
+# Postgres for the Power BI star schema, plus pgAdmin to browse it.
+#   cp .env.example .env    (then set real passwords)
+#   make db-up
+# Postgres is on localhost:${POSTGRES_PORT}; pgAdmin is at http://localhost:${PGADMIN_PORT}.
+# Reach Postgres from another machine (e.g. over Tailscale) at <this machine's Tailscale name>:${POSTGRES_PORT}.
 services:
   postgres:
     image: postgres:17
@@ -11,14 +12,33 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-ga4}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     ports:
-    - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-    - pgdata:/var/lib/postgresql/pgdata
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ga4}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ga4} -d ${POSTGRES_DB:-ga4}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?set PGADMIN_PASSWORD in .env}
+      PGADMIN_CONFIG_SERVER_MODE: "False"          # single user: no pgAdmin login screen
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+
 volumes:
   pgdata:
+  pgadmin_data:

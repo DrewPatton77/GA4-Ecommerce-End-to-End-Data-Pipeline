@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "ga4 (docker)",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "ga4",
+      "Username": "ga4",
+      "SSLMode": "prefer"
+    }
+  }
+}
