@@ -40,7 +40,6 @@ file or database access; the writers do that. Each stage is a module you can use
 subclasses it, so renaming a column is one change, and tests can override names per instance:
 
     SessionFacts(date_id="day_key")
-    Pipeline(schema=DataSchema(country="nation"))
 
 ### Channel rules are data
 
