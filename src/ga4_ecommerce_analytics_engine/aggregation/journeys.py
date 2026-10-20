@@ -30,7 +30,7 @@ class JourneyBuilder(DataSchema):
     def build(self, sessions: pl.DataFrame) -> JourneyResult:
         self.check_required_columns(
             sessions,
-            required_columns={self.user_id, self.session_start_timestamp, self.channel, self.converted, self.session_value}
+            required_columns={self.user_id, self.session_date, self.session_start_timestamp, self.channel, self.converted, self.session_value}
         )
         journeys = self.build_all_journeys(sessions)
         return JourneyResult(journeys, self.build_converting_journeys(journeys))
