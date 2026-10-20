@@ -31,6 +31,24 @@ def test_build_gives_each_distinct_combination_one_integer_key(source):
     assert dim["color_id"].to_list() == [0, 1, 2]  # red/dark, blue/light, null/null
     assert dim.height == 3
 
+def test_placeholder_values_are_cleaned_and_merge_into_one_row():
+    messy = pl.DataFrame(
+        {
+            "who": ["a", "b", "c", "d"],
+            "color": ["(not set)", "", None, "RED"],
+            "shade": ["(none)", "<other>", "(direct)", "Dark"],
+        }
+    )
+    dimension = ColorDimension()
+
+    dim = dimension.build(messy)
+    mapping = dimension.assign_keys(messy, dim, "who")
+
+    # rows 1 and 2 clean to the same (unspecified, unspecified); row 3 is (unspecified, direct); row 4 is (red, dark)
+    assert dim["color"].to_list() == ["unspecified", "unspecified", "red"]
+    assert dim["shade"].to_list() == ["unspecified", "direct", "dark"]
+    assert mapping["color_id"].to_list() == [0, 0, 1, 2]
+
 
 def test_assign_keys_shares_a_key_between_matching_rows_including_nulls(source):
     dimension = ColorDimension()
