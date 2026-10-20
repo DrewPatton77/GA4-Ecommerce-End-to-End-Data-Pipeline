@@ -67,7 +67,7 @@ FACT_BASKET = "fact_basket"
 class Pipeline:
     '''
     Holds the stage objects (settings only). Swap any of them to change behaviour, e.g.
-    Pipeline(basket=BasketAnalyzer(min_support=0.01)) or Pipeline(schema=DataSchema(country="nation"))
+    Pipeline(basket=BasketAnalyzer(min_support=0.01))
     '''
 
     schema: DataSchema = field(default_factory=DataSchema)
@@ -96,17 +96,17 @@ class Pipeline:
     # ---- Dimensions -----------------------------------------------------------
 
     def _dimensions(self, raw, events, items, sessions, tables: Tables) -> "_Mappings":
-        s = self.schema
-        geo, geo_users = GeoDimension(**_overrides(s)).build_with_user_mapping(raw.dimensions)
-        device, device_users = DeviceDimension(**_overrides(s)).build_with_user_mapping(raw.dimensions)
-        traffic = TrafficSourceDimension(**_overrides(s)).build_with_mappings(sessions)
-        transactions = TransactionDimension(**_overrides(s)).build(events, items)
 
-        tables[DIM_DATE] = DateDimension(**_overrides(s)).build(events)
+        geo, geo_users = GeoDimension().build_with_user_mapping(raw.dimensions)
+        device, device_users = DeviceDimension().build_with_user_mapping(raw.dimensions)
+        traffic = TrafficSourceDimension().build_with_mappings(sessions)
+        transactions = TransactionDimension().build(events, items)
+
+        tables[DIM_DATE] = DateDimension().build(events)
         tables[DIM_GEO] = geo
         tables[DIM_DEVICE] = device
         tables[DIM_TRAFFIC_SOURCE] = traffic.dimension
-        tables[DIM_ITEM] = ItemDimension(**_overrides(s)).build(items)
+        tables[DIM_ITEM] = ItemDimension().build(items)
         tables[DIM_TRANSACTION] = transactions.transactions
         tables[BRIDGE_TRANSACTION_ITEM] = transactions.transaction_items
         return _Mappings(geo_users, device_users, traffic.session_mapping, traffic.user_mapping)
@@ -114,22 +114,22 @@ class Pipeline:
     # ---- Facts ----------------------------------------------------------------
 
     def _facts(self, events, items, sessions, journeys, m: "_Mappings", tables: Tables) -> None:
-        s = self.schema
-        user, session = s.user_id, s.session_id
+        schema = DataSchema
+        user, session = schema.user_id, schema.session_id
         by_user = [(m.geo, user), (m.device, user)]  # every fact has a user, so every fact gets these
         by_user_and_source = [*by_user, (m.traffic_user, user)]
         by_session = [*by_user, (m.traffic_session, session)]
 
-        event_facts = EventFacts(**_overrides(s))
+        event_facts = EventFacts()
         events = event_facts.add_event_ids(events)
-        tables[BRIDGE_EVENT_ITEM] = EventItemBridge(**_overrides(s)).build(events, items)
+        tables[BRIDGE_EVENT_ITEM] = EventItemBridge().build(events, items)
         tables[FACT_EVENT] = attach_keys(event_facts.build(events), by_session)
 
-        tables[FACT_ITEM_FUNNEL] = attach_keys(ItemFunnelFacts(**_overrides(s)).build(items), by_session)
-        tables[FACT_SESSION] = attach_keys(SessionFacts(**_overrides(s)).build(sessions), by_session)
-        tables[FACT_USER] = attach_keys(UserFacts(**_overrides(s)).build(sessions), by_user_and_source)
+        tables[FACT_ITEM_FUNNEL] = attach_keys(ItemFunnelFacts().build(items), by_session)
+        tables[FACT_SESSION] = attach_keys(SessionFacts().build(sessions), by_session)
+        tables[FACT_USER] = attach_keys(UserFacts().build(sessions), by_user_and_source)
 
-        journey_facts = JourneyFacts(**_overrides(s)).build(journeys.journeys, journeys.converting)
+        journey_facts = JourneyFacts().build(journeys.journeys, journeys.converting)
         tables[FACT_JOURNEY] = attach_keys(journey_facts.journeys, by_user_and_source)
         tables[FACT_CONVERTING_JOURNEY] = attach_keys(journey_facts.converting, by_user_and_source)
 
@@ -149,8 +149,3 @@ class _Mappings:
     device: pl.DataFrame
     traffic_session: pl.DataFrame
     traffic_user: pl.DataFrame
-
-
-def _overrides(schema: DataSchema) -> dict:
-    '''The schema's field values, so every stage is built with the same column names.'''
-    return {name: getattr(schema, name) for name in schema.__dataclass_fields__}
