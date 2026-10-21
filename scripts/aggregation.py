@@ -25,11 +25,7 @@ from ga4_ecommerce_analytics_engine.sources.bigquery_source import BigQuerySourc
 START_DATE = "2020-11-01" # Start of the dataset. Can be any date as long as it's before the end date.
 END_DATE = "2021-01-31" # End of the dataset.
 src = BigQuerySource()
-
-# ==== # **FIX THIS ** Should make the validation implicity =========
 columns = src.validate_columns(start_date=START_DATE, end_date=END_DATE) 
-# ==== # **FIX THIS ** Should make the validation implicity =========
-
 raw_data = src.fetch_all(START_DATE, END_DATE)
 
 
@@ -50,8 +46,7 @@ utm_data = utmer.enrich_events_with_utm(cleaned_data.events)
 # --- Channel classification -------------------------------
 from ga4_ecommerce_analytics_engine.enrichment.channels import DataChannelClassifier
 channel_classifier = DataChannelClassifier()
-sessions_channel = channel_classifier.classify(utm_data.sessions)
-
+sessions_channel = channel_classifier.grouping(channel_classifier.classify(utm_data.sessions))
 
 # --- Session & Journey Aggregation
 from ga4_ecommerce_analytics_engine.aggregation.sessions import SessionBuilder
