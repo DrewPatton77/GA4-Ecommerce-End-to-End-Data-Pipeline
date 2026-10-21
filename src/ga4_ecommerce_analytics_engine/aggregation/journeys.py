@@ -38,7 +38,7 @@ class JourneyBuilder(DataSchema):
     def build_all_journeys(self, sessions: pl.DataFrame) -> pl.DataFrame:
 
         ordered = (
-            sessions.select((self.user_id, self.session_start_timestamp, self.session_date, self.channel, self.converted, self.session_value))
+            sessions.select((self.user_id, self.session_start_timestamp, self.session_date, self.channel, self.converted, self.session_value, self.channel_group))
             .sort([self.user_id, self.session_start_timestamp], maintain_order=True)
             .with_columns(
                 (
@@ -51,6 +51,7 @@ class JourneyBuilder(DataSchema):
         journeys = ordered.group_by(self.user_id, maintain_order=True).agg(
             pl.col(self.channel).alias(self.conversion_path),
             pl.col(self.channel).unique().sort().alias(self.channel_set),
+            pl.col(self.channel_group).alias(self.channel_group_list),
             pl.col(self.session_date).first().alias(self.journey_start_timestamp),
             pl.col(self.session_date).last().alias(self.journey_end_timestamp),
             pl.col(self.session_start_timestamp).alias(self.timestamp_path),
@@ -75,6 +76,7 @@ class JourneyBuilder(DataSchema):
             .list.eval(pl.element().round(0).cast(pl.Int32).cast(pl.Utf8))
             .list.join(self.separator)
             .alias(self.hours_path),
+            pl.col(self.channel_group_list).list.join(self.separator).alias(self.channel_group_path),
             pl.col(self.conversion_path).list.join(self.separator).alias(self.path_to_conversion),
             pl.when(pl.col(self.conversion_value).eq(0))
             .then(None)

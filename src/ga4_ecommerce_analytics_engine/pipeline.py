@@ -83,7 +83,7 @@ class Pipeline:
 
         clean = self._stage('clean', lambda: self.cleaner.clean_transactions(raw.events, raw.items))
         events, session_utm = self._stage('utm', lambda: tuple(self.utm_builder.enrich_events_with_utm(clean.events)))
-        session_channels = self._stage('channels', lambda: self.classifier.classify(session_utm))
+        session_channels = self._stage('channels', lambda: self.classifier.grouping(self.classifier.classify(session_utm)))
         sessions = self._stage('sessions', lambda: self.session_builder.build(events, session_channels))
         journeys = self._stage('journeys', lambda: self.journey_builder.build(sessions))
 

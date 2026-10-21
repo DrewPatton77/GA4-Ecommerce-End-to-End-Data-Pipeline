@@ -21,7 +21,7 @@ class TrafficSourceDimension(BaseDimension):
 
     @property
     def columns(self) -> tuple[str, ...]:
-        return (self.source_utm, self.medium_utm, self.campaign_utm, self.channel)
+        return (self.source_utm, self.medium_utm, self.campaign_utm, self.channel, self.channel_group)
 
     def build_with_mappings(self, sessions: pl.DataFrame) -> TrafficSourceResult:
         self.check_required_columns(

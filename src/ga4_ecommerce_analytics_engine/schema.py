@@ -85,6 +85,7 @@ class DataSchema:
     medium_utm: str = 'medium_utm'
     campaign_utm: str = 'campaign_utm'
     channel: str = 'channel'
+    channel_group: str = 'channel_group'
 
     # Counts
     page_views: str = 'page_views'
@@ -107,6 +108,8 @@ class DataSchema:
     journey_duration: str = 'duration'
     touchpoint_count: str = 'touchpoint_count'
     path_to_conversion: str = 'path_to_conversion'
+    channel_group_path: str = 'channel_group_path'
+    channel_group_list: str = 'channel_group_list'
 
     # --- User Scope (outputs of the user facts):
     first_active_date: str = 'first_active_date'
