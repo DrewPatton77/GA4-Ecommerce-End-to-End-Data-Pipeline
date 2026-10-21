@@ -28,7 +28,8 @@ class DataCleaner(DataSchema):
             self.user_id, 
             self.session_id,
             self.transaction_id,
-            self.item_id
+            self.item_id,
+            self.item_variant
             ]
     
     @property
@@ -124,8 +125,10 @@ class DataCleaner(DataSchema):
         Keep the first row for each user, session, transaction and item.
         '''
         n_before = purchase_items.height
-        deduplicated = purchase_items.unique(
-            subset=self.deduplication_keys, keep='first', maintain_order=True
+        deduplicated = (
+            purchase_items
+            .sort([*self.deduplication_keys, self.item_value], descending=[False] * len(self.deduplication_keys) + [True])
+            .unique(subset=self.deduplication_keys, keep='first', maintain_order=True)
         )
         logger.info( # its important to keep track of cleaning stats.
             "Purchase item rows after deduplicating: %d (%d dropped)",
@@ -147,22 +150,22 @@ class DataCleaner(DataSchema):
         '''
         context_columns = raw_events.drop(self.event_keys).columns
 
-        logging.info("Event columns: %s", raw_events.columns)
-        logging.info("Item columns: %s", purchase_items.columns)
-        logging.info("Context columns: %s", context_columns)
+        #logging.info("Event columns: %s", raw_events.columns)
+        #logging.info("Item columns: %s", purchase_items.columns)
+        #logging.info("Context columns: %s", context_columns)
         
         context = [
             pl.col(column).first()
             for column in context_columns
             if column in purchase_items.columns
         ]
-        logging.info('context: %s', context)
+        #logging.info('context: %s', context)
         return purchase_items.group_by(self.event_keys, maintain_order=True).agg(
             pl.col(self.transaction_id).first(),
             *context,
             pl.col(self.item_value).sum().alias('event_value'),
             pl.col(self.item_quantity).sum().alias('basket_size'),
-            pl.col(self.item_quantity).count().alias('unique_items'),
+            pl.col(self.item_id).n_unique().alias('unique_items'),
         )
 
     def merge_purchases_into_events(

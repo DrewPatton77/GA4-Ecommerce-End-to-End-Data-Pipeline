@@ -35,10 +35,6 @@ print(raw_data.events.columns)
 # ==== Cleaning =========================================
 from ga4_ecommerce_analytics_engine.cleaning.transactions import DataCleaner
 
-### --- Config ---------------------------------
-# The config for the DataCleaner class can be changed with the following
-custom_cleaner = DataCleaner(user_id="user_id", timestamp="ts") # etc...
-
 ### --- Cleaner --------------------------------
 # Initialize the cleaner object
 cleaner = DataCleaner()

@@ -5,7 +5,7 @@ from typing import NamedTuple
 
 import polars as pl
 
-from ga4_ecommerce_analytics_engine.utils.binning import transform_log_bin
+#from ga4_ecommerce_analytics_engine.utils.binning import transform_log_bin
 from ga4_ecommerce_analytics_engine.utils.paths import PATH_SEPARATOR
 from ga4_ecommerce_analytics_engine.schema import DataSchema
 
@@ -63,11 +63,11 @@ class JourneyBuilder(DataSchema):
         journeys = journeys.with_columns(
             pl.col(self.conversion_count).gt(0).alias(self.has_conversion),
             pl.col(self.hours_before_conversion).list.first().alias(self.journey_duration),
-            pl.len().over(self.touchpoints).cast(pl.Int64).alias(self.touchpoint_count),
+            #pl.len().over(self.touchpoints).cast(pl.Int64).alias(self.touchpoint_count),
         )
-        return transform_log_bin(
-            journeys, self.journey_duration, self.journey_duration, n_bins=self.n_duration_bins, format='timestamp'
-        )
+        return journeys #transform_log_bin(
+        #    journeys, self.journey_duration, self.journey_duration, n_bins=self.n_duration_bins, format='timestamp'
+        #)
 
     def build_converting_journeys(self, journeys: pl.DataFrame) -> pl.DataFrame:
         converting = journeys.filter(pl.col(self.has_conversion)).with_columns(
@@ -81,11 +81,11 @@ class JourneyBuilder(DataSchema):
             .otherwise(pl.col(self.conversion_value))
             .alias(self.conversion_value)
         )
-        return transform_log_bin(
-            converting,
-            self.conversion_value,
-            'value',
-            n_bins=self.n_value_bins,
-            format='value'
-        )
+        return converting #transform_log_bin(
+            #converting,
+            #self.conversion_value,
+            #'value',
+            #n_bins=self.n_value_bins,
+            #format='value'
+        #)
         
