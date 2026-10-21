@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from dataclasses import dataclass
 
 import polars as pl
+from dotenv import load_dotenv
 from psycopg import Connection, connect, sql
 
 from ga4_ecommerce_analytics_engine.writers.warehouse import TableSpec, load_order, table_specs
@@ -24,14 +26,18 @@ logger = logging.getLogger(__name__)
 
 CHUNK_ROWS = 200_000
 
+# Override the .env
+project_root = Path(__file__).resolve().parents[3]
+target_env = project_root / '.env'
+load_dotenv(dotenv_path=target_env, override=True)
 
 @dataclass(frozen=True)
 class PostgresConfig:
     host: str = 'localhost'
-    port: int = 5432
+    port: int = 5434
     database: str = 'ga4'
-    user: str = 'postgres'
-    password: str = ''
+    user: str = 'ga4'
+    password: str = 'password'
 
     @classmethod
     def from_env(cls) -> "PostgresConfig":
@@ -47,6 +53,7 @@ class PostgresConfig:
         )
 
     def connect(self) -> Connection:
+        print(self)
         return connect(
             host=self.host, port=self.port, dbname=self.database, user=self.user, password=self.password
         )
