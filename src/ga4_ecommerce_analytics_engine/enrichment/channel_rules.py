@@ -46,7 +46,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# --- Internals ----> DO NOT EDIT BELOW THIS LINE. SEE BOTTOM OF PAGE <-------
+# --- Internals ----> DO NOT EDIT BELOW THIS LINE. SEE BOTTOM OF PAGE <---------------------------------
 
 SOURCES = ['source_utm', 'medium_utm', 'campaign_utm'] # Should I make these labels configurable in the schema?
 OPERATORS = ("equals", 'in', 'contains', 'regex') # 
@@ -95,7 +95,7 @@ def contains(field: str, *fragments: str) -> Criterion:
     return Criterion(field, 'contains', tuple(fragments))
 
 
-# ---- Main -----> EDIT HERE! DO NOT EDIT ABOVE THIS LINE <-------
+# ---- Main -----> EDIT HERE! DO NOT EDIT ABOVE THIS LINE <----------------------------
 
 class DataChannelRule:
     def __init__(self):
@@ -113,7 +113,7 @@ class DataChannelRule:
             ('facebook', 'facebook'),
             ('reddit', 'reddit'),
             ('googlemerchandisestore.com', 'googlemerchandisestore'),
-            ('doubleclick.net', 'double.click'),
+            ('doubleclick.net', 'doubleclick'),
             ('qwiklabs', 'qwiklabs')
         )
 
@@ -129,7 +129,7 @@ class DataChannelRule:
                     eq(self.medium_utm, '(none)'),
                 ),
             ),
-            ChannelRule('Direct', (eq(self.source_utm, 'googlemerchandisestore'),),),
+            ChannelRule('Direct', (eq(self.source_utm, 'googlemerchandisestore'),),), # Having another 'Direct' ChannelRule makes this an or statement.
             ChannelRule('Paid Search', (eq(self.medium_utm, 'cpc'),),),
             ChannelRule('Email', (eq(self.source_utm, 'mail.google.com'),),),
             ChannelRule('Newsletter', (contains(self.source_utm, 'newsletter'),),),
@@ -155,6 +155,11 @@ class DataChannelRule:
                     ),
                 ),
             ),
+            ChannelRule('Organic Video', (contains(self.source_utm, 'youtube'),),),
+            ChannelRule('Data Share Promo', (eq(self.campaign_utm, 'data share promo'),),),
+            ChannelRule('Affiliate', (eq(self.medium_utm, 'affiliate'),),),
+            ChannelRule('Display Ads', (eq(self.source_utm, 'googlesyndication', 'doubleclick'),),),
+            ChannelRule('Display Ads', (contains(self.source_utm, '2mdn.net'),),),
             ChannelRule(
                 'Internal',
                 (
@@ -172,6 +177,10 @@ class DataChannelRule:
                     ),
                 ),
             ),
+            ChannelRule('Qwiklabs', (contains(self.source_utm, 'qwiklabs'),),),
+            ChannelRule('Redacted', (contains(self.source_utm, 'data deleted'),),),
+            ChannelRule('Redacted', (contains(self.medium_utm, 'data deleted'),),),
+            ChannelRule('Redacted', (contains(self.campaign_utm, 'data deleted'),),),
             ChannelRule(
                 'Referral',
                 (
