@@ -12,5 +12,5 @@ wheels/
 
 # Other 
 .DS_Store
-config.py
+#config.py
 data/cache/
