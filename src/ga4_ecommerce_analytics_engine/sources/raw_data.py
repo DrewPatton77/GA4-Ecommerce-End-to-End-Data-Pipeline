@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import polars as pl
 
-@dataclass
+@dataclass(frozen=True)
 class RawData:
     '''
     Raw extracts, passed around together instead of living as class attributes.

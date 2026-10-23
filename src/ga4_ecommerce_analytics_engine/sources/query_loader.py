@@ -66,13 +66,16 @@ class QueryLoader:
     def load(self, name: str) -> str:
         '''
         Read the raw, unrendered text of a template (i.e., 'events').
+
+        SQL files are cached for the lifetime of the loader; 
+        create a new instance for any changes in the source.
         '''
         if name not in self._cache:
             path = self.sql_dir / f"{name}.sql"
             if not path.is_file():
                 raise FileNotFoundError(
                     f"No SQL template named '{name}' in {self.sql_dir}."
-                    f"Available: {self.available()}"
+                    f" Available: {self.available()}"
                 )
             self._cache[name] = path.read_text(encoding="utf-8")
         return self._cache[name]

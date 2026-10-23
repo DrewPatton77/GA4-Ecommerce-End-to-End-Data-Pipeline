@@ -18,6 +18,7 @@ from ga4_ecommerce_analytics_engine.sources.bigquery_client import (
     BudgetExceededError,
     CostEstimate,
 )
+from ga4_ecommerce_analytics_engine.constants import BYTES_PER_TIB
 
 CAP = 10 # 10 GB cap used by most tests
 
@@ -32,14 +33,18 @@ class FakeRows:
         return self._table
 
 class FakeJob:
-    def __init__(self, total_bytes: int, config) -> None:
+    def __init__(self, total_bytes: int, config, schema: tuple[str, ...] = ("x",)) -> None:
         self.total_bytes_processed = total_bytes
         self.job_config = config
         self.result_timeout = 'not called'
+        self._schema = schema
 
     def result(self, timeout=None) -> FakeRows:
         self.result_timeout = timeout
-        return FakeRows(pa.table({'x': [1,2,3]}))
+        return FakeRows(pa.table({'x': [1, 2, 3]}))
+
+    def _job_statistics(self) -> dict:
+        return {"schema": {"fields": [{"name": n} for n in self._schema]}}
 
 
 class FakeGoogleClient:
@@ -47,16 +52,17 @@ class FakeGoogleClient:
     Mimics the one method of bigquery.Client that BigQueryClient uses.
     '''
 
-    def __init__(self, bytes_scanned: int = 0, error_on_dry_run: Exception | None = None, cap: int= CAP):
+    def __init__(self, bytes_scanned: int = 0, error_on_dry_run: Exception | None = None, cap: int = CAP, schema: tuple[str, ...] = ("x")):
         self.bytes_scanned = bytes_scanned
         self.error_on_dry_run = error_on_dry_run
         self.jobs: list[FakeJob] = []
         self.cap: int = cap
+        self.schema = schema
 
     def query(self, sql_query, job_config=None) -> FakeJob:
         if job_config.dry_run and self.error_on_dry_run:
             raise self.error_on_dry_run
-        job = FakeJob(self.bytes_scanned, job_config)
+        job = FakeJob(self.bytes_scanned, job_config, schema=self.schema)
         self.jobs.append(job)
         return job
 
@@ -84,14 +90,14 @@ def test_settings_given_as_strings_are_cast_to_numbers():
 # ---- Cost estimates -----------------------------------------
 
 def test_estimate_cost_math():
-    client = make_client(FakeGoogleClient(bytes_scanned=10**9, cap=CAP / 1e9))
+    client = make_client(FakeGoogleClient(bytes_scanned=10**9, cap=CAP))
 
     estimate = client.estimate_cost("SELECT 1")
 
     assert estimate.bytes_scanned == 10**9
     assert estimate.gb_scanned == pytest.approx(1)
-    assert estimate.cost_usd == pytest.approx(6.25 / 1000)
-    assert estimate.cost_cad == pytest.approx(8.75 / 1000)
+    assert estimate.cost_usd == pytest.approx(6.25 * 1e9 / BYTES_PER_TIB)
+    assert estimate.cost_cad == pytest.approx((1.4 * 6.25 * 1e9) / BYTES_PER_TIB)
     assert estimate.is_within_budget is True
 
 @pytest.mark.parametrize(
@@ -131,6 +137,30 @@ def test_cost_estimate_summary_and_gb_property():
     assert ok.gb_scanned == 2.5
     assert "within budget" in ok.summary()
     assert "OVER BUDGET" in over.summary()
+
+def test_budget_error_message_reports_the_cap_in_gb():
+    google = FakeGoogleClient(bytes_scanned=11 * 10**9)   # 11 GB
+    client = make_client(google, cap=10)                  # 10 GB cap
+
+    with pytest.raises(BudgetExceededError) as err:
+        client.run_query("SELECT 1")
+
+    assert "10.00 GB" in str(err.value)
+    assert "10737418240" not in str(err.value)            # the buggy rendering
+
+def test_cost_uses_tib_not_tb():
+    # 1 TiB exactly = $6.25 at $6.25/TiB
+    client = make_client(FakeGoogleClient(bytes_scanned=1024**4))
+    assert client.estimate_cost("SELECT 1").cost_usd == pytest.approx(6.25)
+
+def test_check_budget_false_still_sets_billing_cap():
+    google = FakeGoogleClient(bytes_scanned=1)
+    client = make_client(google)
+    client.run_query("SELECT 1", check_budget=False)
+
+    assert len(google.jobs) == 1
+    assert not google.jobs[0].job_config.dry_run
+    assert google.jobs[0].job_config.maximum_bytes_billed == CAP * 10**9
 
 # ---- Running queries ------------------------------------
 
@@ -194,3 +224,22 @@ def test_timeout_is_passed_to_the_result_call():
     client.run_query("SELECT 1", timeout=5)
 
     assert google.jobs[-1].result_timeout == 5
+
+def test_columns_returns_all_columns_from_a_dry_run():
+    # FakeJob needs to expose .schema; add `schema` kwarg to FakeJob:
+    #   def __init__(self, total_bytes, config, schema=("x",)):
+    #       self.schema = [SimpleNamespace(name=n) for n in schema]
+    google = FakeGoogleClient(bytes_scanned=1, schema=("a", "b", "c"))
+    client = make_client(google)
+
+    cols = client.columns("SELECT 1")
+
+    assert cols.columns == ("a", "b", "c")     
+    assert google.jobs[0].job_config.dry_run is True
+
+def test_columns_returns_hashable_object():
+    from ga4_ecommerce_analytics_engine.sources.bigquery_client import Columns
+    google = FakeGoogleClient(bytes_scanned=1, schema=("a",))
+    client = make_client(google)
+
+    hash(client.columns("SELECT 1"))   # will TypeError until field is tuple[str, ...]

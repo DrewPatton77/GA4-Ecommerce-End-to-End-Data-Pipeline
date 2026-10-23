@@ -73,9 +73,14 @@ class BigQuerySource(BaseSource):
 
         Nothing is billed.
         '''
-        columns = {}
+        columns: dict[str, Columns] = {}
         for name in (EVENTS_QUERY, ITEMS_QUERY, DIMENSIONS_QUERY):
             query = self.loader.render(name, start_date, end_date)
+            cols = self.client.columns(query)
+            if not cols.columns:
+                raise RuntimeError(
+                    f"Dry-run for '{name}' returned no columns; refusing to continue"
+                )
             columns[name] = self.client.columns(query)
 
         for column in columns[EVENTS_QUERY].columns:
@@ -97,10 +102,9 @@ class BigQuerySource(BaseSource):
         for name in (EVENTS_QUERY, ITEMS_QUERY, DIMENSIONS_QUERY):
             query = self.loader.render(name, start_date, end_date)
             estimates[name] = self.client.estimate_cost(query)
-            total_cad = sum(e.cost_usd for e in estimates.values())
-            total_gb = sum(e.gb_scanned for e in estimates.values())
-
-            logger.info("Total estimate:  ~$%.4f CAD, %.2f GB", total_cad, total_gb)
+        total_cad = sum(e.cost_cad for e in estimates.values())
+        total_gb = sum(e.gb_scanned for e in estimates.values())
+        logger.info("Total estimate:  ~$%.4f CAD, %.2f GB", total_cad, total_gb)
 
         return estimates
 
@@ -133,7 +137,7 @@ class BigQuerySource(BaseSource):
         automatrically misses the cache instead of returning stale data.
         '''
         digest = hashlib.sha256(query.encode('utf-8')).hexdigest()[:12]
-        return self.cache_dir / f"{name}_{digest}.parquest"
+        return self.cache_dir / f"{name}_{digest}.parquet"
 
     def _write_cache(self, df: pl.DataFrame, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)

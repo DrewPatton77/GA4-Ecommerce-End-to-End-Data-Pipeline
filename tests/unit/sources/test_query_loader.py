@@ -46,6 +46,14 @@ def test_invalid_dates_are_rejected(loader, bad_date):
     with pytest.raises(ValueError, match='Invalid date'):
         loader.render('events', bad_date, '2020-11-02')
 
+def test_start_equal_to_end_is_allowed_inclusive(loader):
+    sql = loader.render('events', '2020-11-01', '2020-11-01')
+    assert "BETWEEN '20201101' AND '20201101'" in sql
+
+def test_reversed_date_range_is_rejected(loader):
+    with pytest.raises(ValueError, match="is after"):
+        loader.render('events', '2020-11-02', '2020-11-01')
+
 def test_reversed_date_range_is_rejected(loader):
     sql = loader.render('events', '2020-11-01', '2020-11-01')
 
@@ -57,11 +65,25 @@ def test_missing_template_error_lists_what_exists(loader):
 
     assert 'events' in str(err.value)
 
+def test_integer_date_is_accepted(loader):
+    assert loader.render("events", 20201101, 20201102) == loader.render(
+        "events", "2020-11-01", "2020-11-02"
+    )
+
+@pytest.mark.parametrize("sloppy", ["2020-1-1", "2020-01-1", "2020-1-01"])
+def test_non_padded_dates_are_currently_accepted(loader, sloppy):
+    # Current behaviour — either document or tighten with a round-trip check
+    assert "BETWEEN '20200101'" in loader.render("events", sloppy, "2020-01-02")
+
 def test_unfilled_placeholder_raises_instead_of_sending_broken_sql(loader, sql_dir):
     (sql_dir / 'broken.sql').write_text('SELECT {{unknown_thing}}', encoding='utf-8')
 
     with pytest.raises(ValueError, match='unknown_thing'):
         loader.render('broken', '2020-11-01', '2020-11-02')
+
+def test_default_sql_dir_resolves_to_the_repo_root():
+    from ga4_ecommerce_analytics_engine.sources.query_loader import DEFAULT_SQL_DIR
+    assert (DEFAULT_SQL_DIR / "events.sql").is_file()
 
 
 def test_extra_values_can_fill_custom_placeholders(loader, sql_dir):

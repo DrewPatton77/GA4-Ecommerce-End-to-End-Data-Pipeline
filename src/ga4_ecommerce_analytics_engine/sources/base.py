@@ -37,7 +37,7 @@ class BaseSource(ABC):
         Raw dimension attributes (geo, device, ...).
         '''
 
-    def fetch_all(self, start_date: DateLike, end_date: DateLike) -> pl.DataFrame:
+    def fetch_all(self, start_date: DateLike, end_date: DateLike) -> RawData:
         '''
         Fetch all three tables. Shared by every source.
         '''

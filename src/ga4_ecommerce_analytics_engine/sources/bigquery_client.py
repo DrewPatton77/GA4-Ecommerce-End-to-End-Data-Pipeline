@@ -28,7 +28,7 @@ from ga4_ecommerce_analytics_engine.config import (
 # import constants
 from ga4_ecommerce_analytics_engine.constants import (
     BYTES_PER_GB,
-    BYTES_PER_TB
+    BYTES_PER_TIB
 )
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class BudgetExceededError(RuntimeError):
 
 @dataclass(frozen=True)
 class Columns:
-    columns: str
+    columns: tuple[str, ...]
 
 @dataclass(frozen=True) # to make hashable.
 class CostEstimate:
@@ -61,7 +61,7 @@ class CostEstimate:
     def summary(self) -> str:
         status = "within budget" if self.is_within_budget else "OVER BUDGET"
         return (
-            f"Scanned: {self.gb_scanned:.2f} GB | "
+            f"Scanned: {self.gb_scanned:.2f} GB"
             f"Cost: ~${self.cost_cad:.4f} CAD (~${self.cost_usd:.4f} USD | {status})"
         )
 
@@ -116,7 +116,7 @@ class BigQueryClient:
     def columns(
         self,
         query: str,
-        query_parameters: Sequence[bigquery.ScalarQueryParameter] | None = None
+        query_parameters = None,
     ) -> Columns:
         '''
         Dry-run a query and extract the columns for validation.
@@ -130,7 +130,7 @@ class BigQueryClient:
         schema_fields = dry_run_properties.get("schema", {}).get("fields", [])
 
         # Extract column names
-        return Columns([field['name'] for field in schema_fields])
+        return Columns(tuple(field['name'] for field in schema_fields)) # Change list to tuple for hashable.
         
 
     # ---- Cost ----------------------------
@@ -157,7 +157,7 @@ class BigQueryClient:
             raise ValueError(f"BigQuery rejected the query during dry run: {err}") from err
 
         bytes_scanned = int(job.total_bytes_processed or 0)
-        cost_usd = (bytes_scanned / BYTES_PER_TB) * self.ondemand_pricing
+        cost_usd = (bytes_scanned / BYTES_PER_TIB) * self.ondemand_pricing
         cost_cad = cost_usd * self.usd_to_cad_exchange_rate
 
         estimate = CostEstimate(
@@ -198,7 +198,7 @@ class BigQueryClient:
             if not estimate.is_within_budget:
                 raise BudgetExceededError(
                     f"Estimated scan of {estimate.gb_scanned:.2f} GB exceeds the cap of "
-                    f"{self.maximum_bytes_billed * BYTES_PER_GB:.2f} GB."
+                    f"{self.maximum_bytes_billed:.2f} GB."
                 )
 
         job_config = self._build_job_config(dry_run=False, query_parameters=query_parameters)
@@ -223,14 +223,4 @@ class BigQueryClient:
             timeout=timeout,
         )
         return pl.from_arrow(table)
-
-    def run_query_pandas(self, query: str, **kwargs) -> "pd.DataFrame":
-        '''
-        Temporary bridge for legacy code that still expects pandas.
-
-        Delete once the cleaning and aggregation code is migrated to polars.
-        '''
-        return self.run_query(query, **kwargs).to_pandas()
         
-
-
