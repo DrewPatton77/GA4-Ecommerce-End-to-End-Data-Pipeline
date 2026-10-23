@@ -7,6 +7,7 @@ import datetime as dt
 import polars as pl
 import pytest
 
+from ga4_ecommerce_analytics_engine.dimensions.items import ItemDimension, ProductDimension
 from ga4_ecommerce_analytics_engine.facts.events import EventFacts, EventItemBridge
 from ga4_ecommerce_analytics_engine.facts.item_funnel import ItemFunnelFacts
 from ga4_ecommerce_analytics_engine.facts.journeys import JourneyFacts
@@ -61,7 +62,7 @@ def test_event_facts_drop_dimension_columns_and_add_date_id():
     assert facts.schema["session_engaged"] == pl.Int8
 
 
-def test_bridge_links_events_to_items_and_skips_not_set():
+def test_bridge_links_events_to_item_keys_and_skips_not_set():
     events = EventFacts().add_event_ids(make_events())
     items = pl.DataFrame(
         {
@@ -70,45 +71,55 @@ def test_bridge_links_events_to_items_and_skips_not_set():
             "event_timestamp_micros": [T0, T0, T0],
             "event_name": ["purchase", "purchase", "purchase"],
             "item_name": ["B", "A", "(not set)"],
+            "item_variant": [None, "S", None],
+            "item_brand": [None, None, None],
+            "item_category": [None, None, None],
+            "price": [1.0, 1.0, 1.0],
         }
     )
+    item_dim = ItemDimension().build(items, ProductDimension().build(items))  # keys in name order: A/S -> 0, B/(not set) -> 1
 
-    bridge = EventItemBridge().build(events, items)
+    bridge = EventItemBridge().build(events, items, item_dim)
 
     assert bridge.columns == ["event_id", "item_id"]
-    assert sorted(zip(bridge["event_id"], bridge["item_id"])) == [(0, "B"), (2, "A")]
+    assert sorted(zip(bridge["event_id"], bridge["item_id"])) == [(0, 1), (2, 0)]  # event 0 has B, event 2 has A
 
 
 # ---- Item funnel -------------------------------------------------------------
 
 
-def test_item_funnel_backfills_earlier_steps_and_ignores_not_set():
+def test_item_funnel_is_per_product_so_a_view_without_variant_counts_with_the_purchase():
     rows = [
-        # A: viewed, carted, purchased -> everything 1
-        ("u1", "s1", D1, "view_item", "A", None, None),
-        ("u1", "s1", D1, "add_to_cart", "A", None, None),
-        ("u1", "s1", D1, "purchase", "A", 10.0, 2),
+        # A: viewed with no variant, carted and purchased as S -> ONE product row, everything 1
+        ("u1", "s1", D1, "view_item", "A", None, None, None),
+        ("u1", "s1", D1, "add_to_cart", "A", "S", None, None),
+        ("u1", "s1", D1, "purchase", "A", "S", 10.0, 2),
         # C: only reached checkout -> viewed and carted are filled in
-        ("u1", "s1", D1, "begin_checkout", "C", None, None),
-        ("u1", "s1", D1, "view_item", "(not set)", None, None),
+        ("u1", "s1", D1, "begin_checkout", "C", None, None, None),
+        ("u1", "s1", D1, "view_item", "(not set)", None, None, None),
     ]
     items = pl.DataFrame(
         rows,
         schema={
             "user_pseudo_id": pl.Utf8, "session_id": pl.Utf8, "event_date": pl.Date, "event_name": pl.Utf8,
-            "item_name": pl.Utf8, "item_revenue": pl.Float64, "quantity": pl.Int64,
+            "item_name": pl.Utf8, "item_variant": pl.Utf8, "item_revenue": pl.Float64, "quantity": pl.Int64,
         },
         orient="row",
     )
+    products = ProductDimension().build(
+        items.with_columns(pl.lit(None, dtype=pl.Utf8).alias("item_brand"), pl.lit(None, dtype=pl.Utf8).alias("item_category"))
+    )  # A -> 0, C -> 1
 
-    result = {row["item_id"]: row for row in ItemFunnelFacts().build(items).iter_rows(named=True)}
+    funnel = ItemFunnelFacts().build(items, products)
+    result = {row["product_id"]: row for row in funnel.iter_rows(named=True)}
 
-    assert set(result) == {"A", "C"}
-    assert [result["A"][c] for c in ("is_viewed", "is_added_to_cart", "is_checked_out", "is_purchased")] == [1, 1, 1, 1]
-    assert [result["C"][c] for c in ("is_viewed", "is_added_to_cart", "is_checked_out", "is_purchased")] == [1, 1, 1, 0]
-    assert result["A"]["revenue"] == 10.0
-    assert result["A"]["quantity"] == 2
-    assert result["A"]["date_id"] == 20201201
+    assert funnel.height == 2  # variants collapsed: A is one row, not one per variant
+    assert set(result) == {0, 1}
+    assert [result[0][c] for c in ("is_viewed", "is_added_to_cart", "is_checked_out", "is_purchased")] == [1, 1, 1, 1]
+    assert [result[1][c] for c in ("is_viewed", "is_added_to_cart", "is_checked_out", "is_purchased")] == [1, 1, 1, 0]
+    assert result[0]["revenue"] == 10.0
+    assert result[0]["quantity"] == 2
+    assert result[0]["date_id"] == 20201201
     assert sorted(r["item_funnel_id"] for r in result.values()) == [0, 1]
 
 
@@ -221,3 +232,4 @@ def test_attach_keys_refuses_a_mapping_that_would_duplicate_rows():
 
     with pytest.raises(ValueError, match="more than one row"):
         attach_keys(fact, [(geo, "user_pseudo_id")])
+
