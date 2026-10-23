@@ -1,20 +1,18 @@
-# Postgres for the Power BI star schema, plus pgAdmin to browse it.
-#   cp .env.example .env    (then set real passwords)
-#   make db-up
-# Postgres is on localhost:${POSTGRES_PORT}; pgAdmin is at http://localhost:${PGADMIN_PORT}.
-# Reach Postgres from another machine (e.g. over Tailscale) at <this machine's Tailscale name>:${POSTGRES_PORT}.
 services:
   postgres:
-    image: postgres:17
+    image: postgres:latest
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ga4}
       POSTGRES_USER: ${POSTGRES_USER:-ga4}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # 🔹 Force Postgres to use the version-specific subdirectories cleanly
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-5434}:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # 🔹 Fixed: Removed the trailing /data to mount to the root storage mount point
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ga4} -d ${POSTGRES_DB:-ga4}"]
       interval: 5s
