@@ -10,7 +10,7 @@ from __future__ import annotations
 import polars as pl
 import pytest
 
-from ga4_ecommerce_analytics_engine.sources.bigquery_client import CostEstimate
+from ga4_ecommerce_analytics_engine.sources.bigquery_client import CostEstimate, Columns
 from ga4_ecommerce_analytics_engine.sources.query_loader import QueryLoader
 
 # Each template selects its own name, so the three queries are easy to tell apart.
@@ -47,10 +47,16 @@ class FakeClient:
     Stands in for BigQueryClient in BigQuerySource tests. Records every call.
     '''
 
-    def __init__(self, bytes_per_query: int = 1_000_000_000) -> None:
+    def __init__(self, bytes_per_query: int = 1_000_000_000, columns_by_name: dict[str, list[str]] | None = None) -> None:
         self.bytes_per_query = bytes_per_query
         self.run_calls: list[str] = []
         self.estimate_calls: list[str] = []
+        self.columns_calls: list[str] = []
+        self.columns_by_name = columns_by_name or {
+            "events":     ("event_id", "user_pseudo_id", "event_name"),
+            "items":      ("event_id", "user_pseudo_id", "event_name", "item_id", "price"),
+            "dimensions": ("date_id", "geo_id"),
+        }
 
     def run_query(self, query: str, **kwargs) -> pl.DataFrame:
         self.run_calls.append(query)
@@ -65,6 +71,12 @@ class FakeClient:
             is_within_budget=True,
         )
 
+    def columns(self, query: str, **kwargs) -> Columns:
+        self.columns_calls.append(query)
+        for name in ("events", "items", "dimensions"):
+            if f"'{name}'" in query:
+                return Columns(self.columns_by_name[name])
+        raise ValueError(f"FakeClient.columns: unknown query {query!r}")
 
 
 @pytest.fixture
