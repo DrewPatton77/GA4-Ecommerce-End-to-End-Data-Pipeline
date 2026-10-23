@@ -45,7 +45,7 @@ utm_data = utmer.enrich_events_with_utm(cleaned_data.events)
 # --- Channel classification -------------------------------
 from ga4_ecommerce_analytics_engine.enrichment.channels import DataChannelClassifier
 channel_classifier = DataChannelClassifier()
-sessions_channel = channel_classifier.grouping(channel_classifier.classify(utm_data.sessions))
+sessions_channel = channel_classifier.classify(utm_data.sessions)
 
 # --- Session & Journey Aggregation
 from ga4_ecommerce_analytics_engine.aggregation.sessions import SessionBuilder
@@ -76,15 +76,20 @@ from ga4_ecommerce_analytics_engine.dimensions.geo import GeoDimension
 geo_dimension_builder = GeoDimension()
 geo_dimension_table = geo_dimension_builder.build(raw_data.dimensions)
 
+# products
+from ga4_ecommerce_analytics_engine.dimensions.items import ProductDimension
+product_dimension_builder = ProductDimension()
+product_dimension_table = product_dimension_builder.build(cleaned_data.items)
+
 # items
 from ga4_ecommerce_analytics_engine.dimensions.items import ItemDimension
 item_dimension_builder = ItemDimension()
-item_dimension_table = item_dimension_builder.build(cleaned_data.items)
+item_dimension_table = item_dimension_builder.build(cleaned_data.items, product_dimension_table)
 
 # transactions
 from ga4_ecommerce_analytics_engine.dimensions.items import TransactionDimension
 transaction_dimension_builder = TransactionDimension()
-transaction_results = transaction_dimension_builder.build(utm_data.events, cleaned_data.items)
+transaction_results = transaction_dimension_builder.build(utm_data.events, cleaned_data.items, item_dimension_table)
 transaction_dimension_table = transaction_results.transactions
 transaction_item_bridge_table = transaction_results.transaction_items
 
@@ -104,6 +109,9 @@ print(device_dimension_table)
 
 print("Geography Dimension Table:")
 print(geo_dimension_table)
+
+print("Product Dimension Table:")
+print(product_dimension_table)
 
 print("Item Dimension Table:")
 print(item_dimension_table)

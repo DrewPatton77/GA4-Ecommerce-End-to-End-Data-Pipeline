@@ -48,7 +48,7 @@ utm_data = utmer.enrich_events_with_utm(cleaned_data.events)
 # --- Channel classification -------------------------------
 from ga4_ecommerce_analytics_engine.enrichment.channels import DataChannelClassifier
 channel_classifier = DataChannelClassifier()
-sessions_channel = channel_classifier.grouping(channel_classifier.classify(utm_data.sessions))
+sessions_channel = channel_classifier.classify(utm_data.sessions)
 
 
 # ===== Session & Journey Aggregation ==========================
@@ -67,16 +67,19 @@ conversion_journeys = results.converting
 
 # events
 from ga4_ecommerce_analytics_engine.facts.events import (EventFacts, EventItemBridge)
+from ga4_ecommerce_analytics_engine.dimensions.items import ItemDimension, ProductDimension
 event_fact_builder = EventFacts()
 events = event_fact_builder.add_event_ids(cleaned_data.events)
 event_fact_table = event_fact_builder.build(events)
 event_item_builder = EventItemBridge()
-event_item_bridge_table = event_item_builder.build(events, cleaned_data.items)
+products = ProductDimension().build(cleaned_data.items)
+items_dim = ItemDimension().build(cleaned_data.items, products)
+event_item_bridge_table = event_item_builder.build(events, cleaned_data.items, items_dim)
 
 # item-funnel
 from ga4_ecommerce_analytics_engine.facts.item_funnel import ItemFunnelFacts
 item_funnel_fact_builder = ItemFunnelFacts()
-item_funnel_fact_table = item_funnel_fact_builder.build(cleaned_data.items)
+item_funnel_fact_table = item_funnel_fact_builder.build(cleaned_data.items, products)
 
 # journeys
 from ga4_ecommerce_analytics_engine.facts.journeys import JourneyFacts
@@ -103,6 +106,7 @@ print('Event-Item Bridge Table:')
 print(event_item_bridge_table)
 
 print('Item-Funnel Fact Table:')
+print(item_funnel_fact_table.columns)
 print(item_funnel_fact_table)
 
 print('Journey Fact Table:')

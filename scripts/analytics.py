@@ -44,5 +44,6 @@ from ga4_ecommerce_analytics_engine.analytics.basket import BasketAnalyzer
 basket_analyzer = BasketAnalyzer()
 basket_analysis = basket_analyzer.build(cleaned_data.items)
 
+print(basket_analysis.columns)
 print("Basket Analysis:")
 print(basket_analysis)

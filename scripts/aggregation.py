@@ -46,7 +46,7 @@ utm_data = utmer.enrich_events_with_utm(cleaned_data.events)
 # --- Channel classification -------------------------------
 from ga4_ecommerce_analytics_engine.enrichment.channels import DataChannelClassifier
 channel_classifier = DataChannelClassifier()
-sessions_channel = channel_classifier.grouping(channel_classifier.classify(utm_data.sessions))
+sessions_channel = channel_classifier.classify(utm_data.sessions)
 
 # --- Session & Journey Aggregation
 from ga4_ecommerce_analytics_engine.aggregation.sessions import SessionBuilder

@@ -45,7 +45,7 @@ utm_data = utmer.enrich_events_with_utm(cleaned_data.events)
 # --- Channel classification -------------------------------
 from ga4_ecommerce_analytics_engine.enrichment.channels import DataChannelClassifier
 channel_classifier = DataChannelClassifier()
-sessions_channel = channel_classifier.grouping(channel_classifier.classify(utm_data.sessions))
+sessions_channel = channel_classifier.classify(utm_data.sessions)
 
 
 # --- Extra: Summary ------------------------------------------------
@@ -65,11 +65,6 @@ print('\nUnique UTM campaigns:')
 print(campaign_counts)
 
 print("\n ---- Session Channel Summary: --------------------------")
-
-print("\n Session Channels")
-print(sessions_channel.filter(pl.col('channel_group').eq('Other Marketing')).head(10))
-print(sessions_channel.filter(pl.col('channel_group').eq('Non-Marketing')).head(10))
-print(sessions_channel.filter(pl.col('channel_group').eq('Email')).head(10))
 
 print(f"\n{sessions_channel.height} rows x {sessions_channel.width} columns")
 sessions_channel = sessions_channel.to_pandas()
