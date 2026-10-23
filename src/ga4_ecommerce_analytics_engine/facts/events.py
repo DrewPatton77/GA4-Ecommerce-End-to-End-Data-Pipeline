@@ -14,6 +14,7 @@ from __future__ import annotations
 import polars as pl
 
 from ga4_ecommerce_analytics_engine.facts.common import add_id, drop_present, to_date_id
+from ga4_ecommerce_analytics_engine.dimensions.items import ItemDimension
 from ga4_ecommerce_analytics_engine.schema import DataSchema
 
 
@@ -49,15 +50,17 @@ class EventItemBridge(DataSchema):
     One row per (event, item) pair, so events and items can be joined many-to-many
     '''
 
-    def build(self, events: pl.DataFrame, items: pl.DataFrame) -> pl.DataFrame:
+    def build(self, events: pl.DataFrame, items: pl.DataFrame, item_dimension: pl.DataFrame) -> pl.DataFrame:
         keys = [self.user_id, self.session_id, self.timestamp, self.event_type]
         self.check_required_columns(events, required_columns={self.event_id, *keys})
-        self.check_required_columns(items, required_columns={*keys, self.item_id})
+        self.check_required_columns(items, required_columns={*keys, self.item_id, self.item_variant})
 
+        joined = events.select(self.event_id, *keys).join(
+            items.select(*keys, self.item_id, self.item_variant), on=keys, how='inner'
+        )
         return (
-            events.select(self.event_id, *keys)
-            .join(items.select(*keys, self.item_id), on=keys, how="inner")
-            .filter(pl.col(self.item_id).is_not_null() & (pl.col(self.item_id) != self.not_set))
-            .select(self.event_id, pl.col(self.item_id).alias(self.item_key))
+            ItemDimension().attach_key(joined, item_dimension)
+            .filter(pl.col(self.item_key).is_not_null())
+            .select(self.event_id, self.item_key)
             .sort(self.event_id, maintain_order=True)
         )

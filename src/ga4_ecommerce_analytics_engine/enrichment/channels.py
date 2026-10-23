@@ -64,20 +64,6 @@ class DataChannelClassifier:
         normalized = self.normalize_sources(sessions)
         return normalized.with_columns(self._channel_expression().alias('channel'))
 
-    # --- Grouping all channels -----------------------------------
-    def grouping(self, sessions_channel: pl.DataFrame) -> pl.DataFrame:
-        return sessions_channel.with_columns(
-            pl.when(pl.col('channel').str.contains('Email|Newsletter')).then(pl.lit('Email'))
-            .when(pl.col('channel').str.contains('Internal|Redacted|Qwiklabs')).then(pl.lit('Non-Marketing'))
-            .when(pl.col('channel').str.contains('Organic Social|Organic Video|Display Ads|Affiliate|Data Share Promo')).then(pl.lit('Other Marketing'))
-            .when(pl.col('channel').eq('Organic Search')).then(pl.lit('Organic Search'))
-            .when(pl.col('channel').eq('Direct')).then(pl.lit('Direct'))
-            .when(pl.col('channel').eq('Referral')).then(pl.lit('Referral'))
-            .when(pl.col('channel').eq('Paid Search')).then(pl.lit('Paid Search'))
-            .when(pl.col('channel').eq('Unclassified')).then(pl.lit('Unclassified'))
-            .alias('channel_group')
-        )
-
     # --- Matching --------------------------------------------------
 
     def _channel_expression(self) -> pl.Expr:

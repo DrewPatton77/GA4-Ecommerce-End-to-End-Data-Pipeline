@@ -39,6 +39,7 @@ def table_specs(schema: DataSchema | None = None) -> dict[str, TableSpec]:
     source = ForeignKey(s.traffic_source_id, t.DIM_TRAFFIC_SOURCE, s.traffic_source_id)
     date = ForeignKey(s.date_id, t.DIM_DATE, s.date_id)
     item = ForeignKey(s.item_key, t.DIM_ITEM, s.item_key)
+    product = ForeignKey(s.product_key, t.DIM_PRODUCT, s.product_key)
 
     specs = [
         # Dimensions
@@ -46,11 +47,12 @@ def table_specs(schema: DataSchema | None = None) -> dict[str, TableSpec]:
         TableSpec(t.DIM_GEO, (s.geo_id,)),
         TableSpec(t.DIM_DEVICE, (s.device_id,)),
         TableSpec(t.DIM_TRAFFIC_SOURCE, (s.traffic_source_id,)),
-        TableSpec(t.DIM_ITEM, (s.item_key,)),
+        TableSpec(t.DIM_PRODUCT, (s.product_key,)),
+        TableSpec(t.DIM_ITEM, (s.item_key,), (product,)),
         TableSpec(t.DIM_TRANSACTION, (s.transaction_id,)),
         # Facts
         TableSpec(t.FACT_EVENT, (s.event_id,), (date, geo, device, source)),
-        TableSpec(t.FACT_ITEM_FUNNEL, (s.item_funnel_id,), (date, geo, device, source, item)),
+        TableSpec(t.FACT_ITEM_FUNNEL, (s.item_funnel_id,), (date, geo, device, source, product)),
         TableSpec(t.FACT_SESSION, (s.session_id,), (date, geo, device, source)),
         TableSpec(t.FACT_USER, (s.user_id,), (geo, device, source)),
         TableSpec(t.FACT_JOURNEY, (s.journey_id,), (geo, device, source)),
@@ -65,8 +67,8 @@ def table_specs(schema: DataSchema | None = None) -> dict[str, TableSpec]:
         ),
         TableSpec(
             t.BRIDGE_TRANSACTION_ITEM,
-            (s.transaction_id, s.item_id),
-            (ForeignKey(s.transaction_id, t.DIM_TRANSACTION, s.transaction_id),),
+            (s.transaction_id, s.item_key),
+            (ForeignKey(s.transaction_id, t.DIM_TRANSACTION, s.transaction_id), item),
         ),
     ]
     return {spec.name: spec for spec in specs}

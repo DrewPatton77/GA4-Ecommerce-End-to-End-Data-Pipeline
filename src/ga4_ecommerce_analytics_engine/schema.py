@@ -58,6 +58,8 @@ class DataSchema:
     item_category: str = 'item_category'
     item_price: str = 'price'
     not_set: str = '(not set)'          # GA4's placeholder for a missing item name
+    uncategorized: str = 'Uncategorized'
+    unbranded: str = 'Unbranded'
 
     # Item-funnel outputs
     is_viewed: str = 'is_viewed'
@@ -108,8 +110,7 @@ class DataSchema:
     journey_duration: str = 'duration'
     touchpoint_count: str = 'touchpoint_count'
     path_to_conversion: str = 'path_to_conversion'
-    channel_group_path: str = 'channel_group_path'
-    channel_group_list: str = 'channel_group_list'
+
 
     # --- User Scope (outputs of the user facts):
     first_active_date: str = 'first_active_date'
@@ -145,6 +146,7 @@ class DataSchema:
     geo_id: str = 'geo_id'
     device_id: str = 'device_id'
     traffic_source_id: str = 'traffic_source_id'
+    product_key: str = 'product_id'
     item_key: str = 'item_id'
     item_funnel_id: str = 'item_funnel_id'
     journey_id: str = 'journey_id'

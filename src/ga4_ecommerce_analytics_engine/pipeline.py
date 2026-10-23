@@ -28,7 +28,7 @@ from ga4_ecommerce_analytics_engine.cleaning.transactions import DataCleaner
 from ga4_ecommerce_analytics_engine.dimensions.date import DateDimension
 from ga4_ecommerce_analytics_engine.dimensions.device import DeviceDimension
 from ga4_ecommerce_analytics_engine.dimensions.geo import GeoDimension
-from ga4_ecommerce_analytics_engine.dimensions.items import ItemDimension, TransactionDimension
+from ga4_ecommerce_analytics_engine.dimensions.items import ItemDimension, TransactionDimension, ProductDimension
 from ga4_ecommerce_analytics_engine.dimensions.traffic_source import TrafficSourceDimension
 from ga4_ecommerce_analytics_engine.enrichment.channels import DataChannelClassifier
 from ga4_ecommerce_analytics_engine.enrichment.utm import DataUtm
@@ -50,6 +50,7 @@ DIM_DATE = "dim_date"
 DIM_GEO = "dim_geo"
 DIM_DEVICE = "dim_device"
 DIM_TRAFFIC_SOURCE = "dim_traffic_source"
+DIM_PRODUCT = 'dim_product'
 DIM_ITEM = "dim_item"
 DIM_TRANSACTION = "dim_transaction"
 BRIDGE_TRANSACTION_ITEM = "bridge_transaction_item"
@@ -83,7 +84,7 @@ class Pipeline:
 
         clean = self._stage('clean', lambda: self.cleaner.clean_transactions(raw.events, raw.items))
         events, session_utm = self._stage('utm', lambda: tuple(self.utm_builder.enrich_events_with_utm(clean.events)))
-        session_channels = self._stage('channels', lambda: self.classifier.grouping(self.classifier.classify(session_utm)))
+        session_channels = self._stage('channels', lambda: self.classifier.classify(session_utm))
         sessions = self._stage('sessions', lambda: self.session_builder.build(events, session_channels))
         journeys = self._stage('journeys', lambda: self.journey_builder.build(sessions))
 
@@ -100,16 +101,20 @@ class Pipeline:
         geo, geo_users = GeoDimension().build_with_user_mapping(raw.dimensions)
         device, device_users = DeviceDimension().build_with_user_mapping(raw.dimensions)
         traffic = TrafficSourceDimension().build_with_mappings(sessions)
-        transactions = TransactionDimension().build(events, items)
+        products = ProductDimension().build(items)
+        item_dim = ItemDimension().build(items, products)
+        transactions = TransactionDimension().build(events, items, item_dim)
 
         tables[DIM_DATE] = DateDimension().build(events)
         tables[DIM_GEO] = geo
         tables[DIM_DEVICE] = device
         tables[DIM_TRAFFIC_SOURCE] = traffic.dimension
-        tables[DIM_ITEM] = ItemDimension().build(items)
+        tables[DIM_PRODUCT] = products
+        tables[DIM_ITEM] = item_dim
         tables[DIM_TRANSACTION] = transactions.transactions
         tables[BRIDGE_TRANSACTION_ITEM] = transactions.transaction_items
-        return _Mappings(geo_users, device_users, traffic.session_mapping, traffic.user_mapping)
+        tables[DIM_ITEM] = item_dim
+        return _Mappings(geo_users, device_users, traffic.session_mapping, traffic.user_mapping, products, item_dim)
 
     # ---- Facts ----------------------------------------------------------------
 
@@ -122,10 +127,10 @@ class Pipeline:
 
         event_facts = EventFacts()
         events = event_facts.add_event_ids(events)
-        tables[BRIDGE_EVENT_ITEM] = EventItemBridge().build(events, items)
+        tables[BRIDGE_EVENT_ITEM] = EventItemBridge().build(events, items, m.items)
         tables[FACT_EVENT] = attach_keys(event_facts.build(events), by_session)
 
-        tables[FACT_ITEM_FUNNEL] = attach_keys(ItemFunnelFacts().build(items), by_session)
+        tables[FACT_ITEM_FUNNEL] = attach_keys(ItemFunnelFacts().build(items, m.products), by_session)
         tables[FACT_SESSION] = attach_keys(SessionFacts().build(sessions), by_session)
         tables[FACT_USER] = attach_keys(UserFacts().build(sessions), by_user_and_source)
 
@@ -149,3 +154,5 @@ class _Mappings:
     device: pl.DataFrame
     traffic_session: pl.DataFrame
     traffic_user: pl.DataFrame
+    products: pl.DataFrame
+    items: pl.DataFrame
