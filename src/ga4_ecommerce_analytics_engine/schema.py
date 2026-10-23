@@ -20,6 +20,9 @@ class DataSchema:
     event_type: str = 'event_name'
     event_date: str = 'event_date'
     conversion_timestamp: str = 'conversion_timestamp'
+    page_referrer: str = 'page_referrer'
+    page_path: str = 'page_path'
+    first_touch: str = 'first_touch'
 
     # Ecommerce
     transaction_id: str = 'transaction_id'
@@ -46,6 +49,7 @@ class DataSchema:
     device_model_name: str = 'device_model_name'
     device_os: str = 'device_os'
     device_os_version: str = 'device_os_version'
+    device_language: str = 'device_language'
 
     # --- Item scope:
     # NOTE: item_id is the INPUT column that identifies an item (the item's name).
