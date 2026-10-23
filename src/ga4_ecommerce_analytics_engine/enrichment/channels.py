@@ -76,7 +76,7 @@ class DataChannelClassifier:
             label = pl.lit(rule.label)
             chain = pl.when(condition).then(label) if chain is None else chain.when(condition).then(label)
         if chain is None:
-            return pl.lit('Unclassifed')
+            return pl.lit('Unclassified')
         return chain.otherwise(pl.lit('Unclassified'))
 
     def _rule_expression(self, rule: ChannelRule) -> pl.Expr:

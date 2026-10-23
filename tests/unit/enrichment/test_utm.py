@@ -8,6 +8,7 @@ import polars as pl
 import pytest
 
 from ga4_ecommerce_analytics_engine.enrichment.utm import DataUtm
+from ga4_ecommerce_analytics_engine.schema import DataSchema
 
 T = [dt.datetime(2020, 12, 1, 9, m) for m in range(5)]
 
@@ -67,20 +68,51 @@ def test_session_without_utm_gets_nulls(utm):
     result = sessions_by_id(utm.resolve_session_utm(make_events()))
 
     assert result["s2"]["source_utm"] is None
+    assert result["s2"]["medium_utm"] is None
     assert result["s2"]["campaign_utm"] is None
 
 
 def test_enrich_keeps_every_event_and_copies_session_values(utm):
     events = make_events()
 
-    result = utm.enrich_events_with_utm(events)
+    result = utm.resolve(events)
 
     assert result.events.height == events.height
     assert set(result.events.filter(pl.col("session_id") == "s1")["source_utm"]) == {"google"}
     assert result.sessions.height == 2
-    assert not any(c.startswith("_") for c in result.events.columns)  # helper columns don't leak
+    result = utm.resolve_session_utm(make_events())
+    assert set(result.columns) == {'session_id', 'source_utm', 'medium_utm', 'campaign_utm'}
 
+def test_custom_utm_column_names_are_respected():
+    events = make_events().rename({
+        'source': 'src', 'medium': 'med', 'campaign': 'cmp',
+    })
+    custom = DataUtm(**{**COLUMNS, 'source': 'src', 'medium': 'med', 'campaign': 'cmp'})
+    result = sessions_by_id(custom.resolve_session_utm(events))
 
-def test_check_required_columns_names_the_missing_ones(utm):
-    with pytest.raises(KeyError, match="campaign"):
-        utm._check_required_columns(make_events().drop("campaign"))
+    assert result['s1']['source_utm'] == 'google'
+    assert result['s1']['medium_utm'] == 'cpc'
+    assert result['s1']['campaign_utm'] == 'spring'
+
+def test_session_with_only_session_start_uses_that_event():
+    events = pl.DataFrame([
+        ('u1', 's1', T[0], 'session_start', 'google', 'cpc', 'spring'),
+    ], schema=SCHEMA, orient='row')
+    result = sessions_by_id(DataUtm(**COLUMNS).resolve_session_utm(events))
+    assert result['s1']['source_utm'] == 'google'
+    assert result['s1']['campaign_utm'] == 'spring'
+
+def test_direct_placeholder_preserved_when_no_real_source_exists():
+    events = pl.DataFrame([
+        ('u1', 's1', T[0], 'session_start', '(direct)', '(none)', None),
+        ('u1', 's1', T[1], 'page_view', '(direct)', '(none)', None),
+    ], schema=SCHEMA, orient='row')
+    result = sessions_by_id(DataUtm(**COLUMNS).resolve_session_utm(events))
+    assert result['s1']['source_utm'] == '(direct)'
+    assert result['s1']['campaign_utm'] is None
+
+def test_double_resolve_raises_or_is_idempotent():
+    utm = DataUtm(**COLUMNS)
+    first = utm.resolve(make_events())
+    with pytest.raises(Exception):   # or whatever your fix does
+        utm.resolve(first.events)

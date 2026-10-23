@@ -8,12 +8,14 @@ Set-up channel rules for marketing source / medium / campaign
 ------
 Rules are checked in priority order, such that the first match is priority.
 
-A rule matches when ANY of its clauses match. 
-
+A rule matches when ALL of its clauses match.
 A clause is either a single Criterion, or a tuple of Criterion objects that must ALL hold.
 
+Multiple rules with the same label are OR'd together — the first matching rule
+(in priority order) assigns the label.
+
 Criteria compare against the lower-cased, trimmed source / medium / campaign:
-    equals, in, contains, regex.
+    contains, one_of
 
 The structure is as follows:
     - Channel Rules:
@@ -28,16 +30,14 @@ The structure is as follows:
         
 
 Let us look at a simple example to get the structure down:
-    - Channel Rule:
-        - label = 'Direct'
-            - Clause = (
-                - Criterion = (source == '(direct)' & medium == '(none)'),
-                - Criterion = (source == 'googlemerchandisestore')
-               )
-        - label = 'Email'
-            - Clause = (
-                - Criterion = (source == 'google.mail.com')
-              )
+    ChannelRule('Direct', (
+            eq(source, '(direct)'),       # clause 1: single Criterion
+            eq(medium, '(none)'),         # clause 2: single Criterion
+            # Both must hold → source==direct AND medium==none
+        )),
+        ChannelRule('Direct', (
+            eq(source, 'googlemerchandisestore'),  # second Direct rule, OR'd with the first
+        )),
         ...
         - (edit, remove or add)
 '''
@@ -45,12 +45,15 @@ Let us look at a simple example to get the structure down:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from ga4_ecommerce_analytics_engine.schema import DataSchema
 
 # --- Internals ----> DO NOT EDIT BELOW THIS LINE. SEE BOTTOM OF PAGE <---------------------------------
 
-SOURCES = ['source_utm', 'medium_utm', 'campaign_utm'] # Should I make these labels configurable in the schema?
-OPERATORS = ("equals", 'in', 'contains', 'regex') # 
+schema = DataSchema()
+
+OPERATORS = ('contains', 'in') # 
 UNCLASSIFIED_LABEL = 'Unclassified' # When no rules match, the rule returns an 'Unclassified' rule.
+SOURCES = (schema.source_utm, schema.medium_utm, schema.campaign_utm)
 
 @dataclass(frozen=True)
 class Criterion:
@@ -88,7 +91,7 @@ class ChannelRule:
 # --- Short constructors so the channel rules read like a table -----
 
 
-def eq(field: str, *values: str) -> Criterion:
+def one_of(field: str, *values: str) -> Criterion:
     return Criterion(field, "in", tuple(values))
 
 def contains(field: str, *fragments: str) -> Criterion:
@@ -99,11 +102,9 @@ def contains(field: str, *fragments: str) -> Criterion:
 
 class DataChannelRule:
     def __init__(self):
-
-        # Required columns
-        self.source_utm = 'source_utm'
-        self.medium_utm = 'medium_utm'
-        self.campaign_utm = 'campaign_utm'
+        self.source_utm = schema.source_utm
+        self.medium_utm = schema.medium_utm
+        self.campaign_utm = schema.campaign_utm
 
         # Source normalization
         self.source_normalization: tuple[tuple[str, str], ...] = (
@@ -125,25 +126,25 @@ class DataChannelRule:
             ChannelRule(
                 'Direct',
                 (
-                    eq(self.source_utm, '(direct)'), 
-                    eq(self.medium_utm, '(none)'),
+                    one_of(self.source_utm, '(direct)'), 
+                    one_of(self.medium_utm, '(none)'),
                 ),
             ),
-            ChannelRule('Direct', (eq(self.source_utm, 'googlemerchandisestore'),),), # Having another 'Direct' ChannelRule makes this an or statement.
-            ChannelRule('Paid Search', (eq(self.medium_utm, 'cpc'),),),
-            ChannelRule('Email', (eq(self.source_utm, 'mail.google.com'),),),
+            ChannelRule('Direct', (one_of(self.source_utm, 'googlemerchandisestore'),),), # Having another 'Direct' ChannelRule makes this an or statement.
+            ChannelRule('Paid Search', (one_of(self.medium_utm, 'cpc'),),),
+            ChannelRule('Email', (one_of(self.source_utm, 'mail.google.com'),),),
             ChannelRule('Newsletter', (contains(self.source_utm, 'newsletter'),),),
             ChannelRule(
                 'Organic Search',
                 (
-                    eq(self.medium_utm, 'organic'),
-                    eq(self.source_utm, 'google', 'baidu', 'ecosia.org', 'yahoo', 'bing'),
+                    one_of(self.medium_utm, 'organic'),
+                    one_of(self.source_utm, 'google', 'baidu', 'ecosia.org', 'yahoo', 'bing'),
                 ),
             ),
             ChannelRule(
                 'Organic Social',
                 (
-                    eq(
+                    one_of(
                         self.source_utm,
                         "reddit",
                         "facebook",
@@ -156,14 +157,14 @@ class DataChannelRule:
                 ),
             ),
             ChannelRule('Organic Video', (contains(self.source_utm, 'youtube'),),),
-            ChannelRule('Data Share Promo', (eq(self.campaign_utm, 'data share promo'),),),
-            ChannelRule('Affiliate', (eq(self.medium_utm, 'affiliate'),),),
-            ChannelRule('Display Ads', (eq(self.source_utm, 'googlesyndication', 'doubleclick'),),),
+            ChannelRule('Data Share Promo', (one_of(self.campaign_utm, 'data share promo'),),),
+            ChannelRule('Affiliate', (one_of(self.medium_utm, 'affiliate'),),),
+            ChannelRule('Display Ads', (one_of(self.source_utm, 'googlesyndication', 'doubleclick'),),),
             ChannelRule('Display Ads', (contains(self.source_utm, '2mdn.net'),),),
             ChannelRule(
                 'Internal',
                 (
-                    eq(
+                    one_of(
                         self.source_utm,
                         'corp.google.com',
                         'docs.google.com',
@@ -185,7 +186,7 @@ class DataChannelRule:
                 'Referral',
                 (
                     contains(self.source_utm, '.com', '.net', '.org'),
-                    eq(self.medium_utm, 'referral'),
+                    one_of(self.medium_utm, 'referral'),
                 ),
         ),
     )

@@ -3,7 +3,7 @@ from __future__ import annotations
 import polars as pl
 import pytest
 
-from ga4_ecommerce_analytics_engine.enrichment.channel_rules import ChannelRule, eq
+from ga4_ecommerce_analytics_engine.enrichment.channel_rules import ChannelRule, one_of
 from ga4_ecommerce_analytics_engine.enrichment.channels import DataChannelClassifier
 
 
@@ -28,6 +28,8 @@ CHANNEL_CASES = [
     pytest.param("some-site.com", "unknown", "Referral", id="referral-by-domain"),
     pytest.param("other", "referral", "Referral", id="referral-by-medium"),
     pytest.param("something-else", "something-else", "Unclassified", id="unclassified"),
+    pytest.param("google", "(none)", "Direct", id="direct-medium-only"),
+    pytest.param("some-site.com", "organic", "Referral", id="referral-by-domain-non-referral-medium"),
 ]
 
 
@@ -43,7 +45,7 @@ def test_a_criterion_only_looks_at_its_own_column():
 
 def test_a_tuple_clause_requires_every_criterion():
     classifier = DataChannelClassifier()
-    classifier.rules = (ChannelRule("Mine", ((eq("source_utm", "a"), eq("medium_utm", "b")),)),)
+    classifier.rules = (ChannelRule("Mine", ((one_of("source_utm", "a"), one_of("medium_utm", "b")),)),)
 
     assert classify([("a", "b", None), ("a", "x", None), ("z", "b", None)], classifier) == [
         "Mine",
@@ -64,3 +66,19 @@ def test_values_are_lowercased_trimmed_and_sources_normalised():
 
 def test_nulls_do_not_crash_and_are_unclassified():
     assert classify([(None, None, None)]) == ["Unclassified"]
+
+def test_empty_rules_returns_unclassified():
+    classifier = DataChannelClassifier()
+    classifier.rules = ()
+    assert classify([("google", "cpc", None)], classifier) == ["Unclassified"]
+
+def test_empty_dataframe_returns_empty_with_channel_column():
+    empty = pl.DataFrame(schema={"source_utm": pl.Utf8, "medium_utm": pl.Utf8, "campaign_utm": pl.Utf8})
+    result = DataChannelClassifier().classify(empty)
+    assert result.height == 0
+    assert "channel" in result.columns
+
+def test_normalization_does_not_cascade():
+    # If a source matches one pattern, it shouldn't trigger a *later* pattern's replacement
+    # (only matters if two patterns could overlap)
+    assert classify([("googlemerchandisestore.com", "referral", None)]) == ["Direct"]

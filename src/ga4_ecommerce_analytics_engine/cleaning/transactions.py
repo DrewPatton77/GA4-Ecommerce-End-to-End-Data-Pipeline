@@ -14,6 +14,8 @@ from ga4_ecommerce_analytics_engine.schema import DataSchema
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["DataUtm", "UtmResult"]
+
 
 # Store the cleaned data in a class for easy access.
 class CleanedData(NamedTuple):
@@ -163,9 +165,9 @@ class DataCleaner(DataSchema):
         return purchase_items.group_by(self.event_keys, maintain_order=True).agg(
             pl.col(self.transaction_id).first(),
             *context,
-            pl.col(self.item_value).sum().alias('event_value'),
-            pl.col(self.item_quantity).sum().alias('basket_size'),
-            pl.col(self.item_id).n_unique().alias('unique_items'),
+            pl.col(self.item_value).sum().alias(self.event_value),
+            pl.col(self.item_quantity).sum().alias(self.basket_size),
+            pl.col(self.item_id).n_unique().alias(self.unique_items),
         )
 
     def merge_purchases_into_events(
