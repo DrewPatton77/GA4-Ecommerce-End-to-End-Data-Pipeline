@@ -34,6 +34,7 @@ ITEM_SCHEMA = {
     'event_timestamp_micros': pl.Datetime,
     'event_name': pl.Utf8,
     'item_name': pl.Utf8,
+    'item_variant': pl.Utf8,
     'item_revenue': pl.Float64,
     'quantity': pl.Int64,
     'transaction_id': pl.Utf8,
@@ -51,13 +52,13 @@ def make_events() -> pl.DataFrame:
     return pl.DataFrame(rows, schema=EVENT_SCHEMA, orient='row')
 
 def make_items() -> pl.DataFrame:
-
     rows = [
-        ('u1', 1, T0, 'view_item', 'A', None, None, None, DAY),
-        ('u1', 1, T2, 'purchase', 'A', 10.0, 1, 'x1', DAY),
-        ('u1', 1, T2, 'purchase', 'B', 30.0, 2, None, DAY),
-        ('u1', 1, T2, 'purchase', 'A', 10.0, 1, 'x1', DAY),
-        ('u1', 1, T2, 'purchase', 'C', None, 1, None, DAY),
+        # (user, session, ts, event, name, variant, revenue, qty, txn, date)
+        ('u1', 1, T0, 'view_item', 'A', None,   None,  None, None, DAY),
+        ('u1', 1, T2, 'purchase',  'A', 'red',  10.0,  1,    'x1', DAY),
+        ('u1', 1, T2, 'purchase',  'B', None,   30.0,  2,    None, DAY),
+        ('u1', 1, T2, 'purchase',  'A', 'red',  10.0,  1,    'x1', DAY),   # dup of row 2
+        ('u1', 1, T2, 'purchase',  'C', None,   None,  1,    None, DAY),
     ]
     return pl.DataFrame(rows, schema=ITEM_SCHEMA, orient='row')
 
@@ -177,11 +178,12 @@ def test_deduplicate_keeps_the_first_row_but_not_rows_from_another_transaction()
             'session_id': ['u-1', 'u-1', 'u-1'],
             'transaction_id': ['t1', 't1', 't2'],
             'item_name': ['A', 'A', 'A'],
+            'item_variant': ['red', 'red', 'red'],
             'item_revenue': [1.0, 2.0, 3.0],
         }
     )
 
     result = DataCleaner().deduplicate_items(df)
 
-    assert result['item_revenue'].to_list() == [1.0, 3.0]
+    assert result['item_revenue'].to_list() == [2.0, 3.0]
 

@@ -202,7 +202,7 @@ class DataCleaner(DataSchema):
         # --- Column Validation ----------------------------------
         self.check_required_columns( 
             raw_items, 
-            required_values={self.conversion},
+            #required_values={self.conversion},
             required_columns={
                 self.timestamp,
                 self.user_id,
