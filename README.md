@@ -31,6 +31,7 @@ file or database access; the writers do that. Each stage is a module you can use
 | aggregate | `aggregation/` | Events -> sessions -> user journeys (paths, durations, conversion value, log bins) |
 | dimensions | `dimensions/` | Date, geo, device, traffic source, item, transaction; integer keys and key mappings |
 | facts | `facts/` | Event, item funnel, session, user, journey tables with dimension keys attached |
+| attribution | `analytics/attribution.py` | Credit for conversions under eight models (first, last, last non-direct, linear, position, time-decay, Shapley, Markov) |
 | basket | `analytics/basket.py` | Items bought together: support, confidence, lift, Louvain communities |
 | write | `writers/` | Parquet files, or Postgres in one transaction with primary and foreign keys |
 
@@ -40,6 +41,7 @@ file or database access; the writers do that. Each stage is a module you can use
 subclasses it, so renaming a column is one change, and tests can override names per instance:
 
     SessionFacts(date_id="day_key")
+    Pipeline(schema=DataSchema(country="nation"))
 
 ### Channel rules are data
 
@@ -57,6 +59,17 @@ See [docs/tables.md](docs/tables.md) for the grain, keys and relationships of al
 Tests are deliberately few and focused: a handful per module. Pure-Python logic (CLI, load order, type mapping)
 is tested directly. Polars transformations are tested on tiny hand-built frames. The Postgres `COPY` and
 constraint code is exercised by a real run (`make run-pg`), not by unit tests.
+
+## Known differences from the original notebook code
+
+Worth knowing when you compare against a golden dataset:
+
+- Geo is mapped per user from their first sighting; device from each user's first row.
+- Converting-journey dates are converted from the converting table itself (the original used the wrong frame).
+- Event facts get a `date_id`; the event-item bridge is an inner join.
+- `total_lifetime_events` sums each session's `event_count`.
+- Basket item columns are sorted alphabetically; items with no revenue are dropped; community numbers can differ
+  from the original run, so compare the groupings, not the labels.
 
 ## Layout
 
