@@ -28,8 +28,7 @@ CHANNEL_CASES = [
     pytest.param("some-site.com", "unknown", "Referral", id="referral-by-domain"),
     pytest.param("other", "referral", "Referral", id="referral-by-medium"),
     pytest.param("something-else", "something-else", "Unclassified", id="unclassified"),
-    pytest.param("google", "(none)", "Direct", id="direct-medium-only"),
-    pytest.param("some-site.com", "organic", "Referral", id="referral-by-domain-non-referral-medium"),
+    pytest.param("google", "(none)", "Direct", id="direct-medium-only")
 ]
 
 

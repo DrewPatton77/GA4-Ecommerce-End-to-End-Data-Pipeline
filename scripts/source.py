@@ -11,7 +11,7 @@ import polars as pl
 from ga4_ecommerce_analytics_engine.sources.bigquery_source import BigQuerySource
 
 logging.basicConfig(
-    level=logging.INFO,  # Change to DEBUG for more verbose output
+    level=logging.DEBUG,  # Change to DEBUG for more verbose output
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )

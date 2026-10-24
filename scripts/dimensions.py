@@ -39,7 +39,7 @@ cleaned_data = cleaner.clean_transactions(raw_data.events, raw_data.items, compo
 # --- UTM classification and aggregation
 from ga4_ecommerce_analytics_engine.enrichment.utm import DataUtm
 utmer = DataUtm()
-utm_data = utmer.enrich_events_with_utm(cleaned_data.events)
+utm_data = utmer.resolve(cleaned_data.events)
 
 
 # --- Channel classification -------------------------------
