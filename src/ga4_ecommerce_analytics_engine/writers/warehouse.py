@@ -50,6 +50,7 @@ def table_specs(schema: DataSchema | None = None) -> dict[str, TableSpec]:
         TableSpec(t.DIM_PRODUCT, (s.product_key,)),
         TableSpec(t.DIM_ITEM, (s.item_key,), (product,)),
         TableSpec(t.DIM_TRANSACTION, (s.transaction_id,)),
+        TableSpec(t.DIM_ATTRIBUTION_MODEL, (s.attribution_model_id,)),
         # Facts
         TableSpec(t.FACT_EVENT, (s.event_id,), (date, geo, device, source)),
         TableSpec(t.FACT_ITEM_FUNNEL, (s.item_funnel_id,), (date, geo, device, source, product)),
@@ -58,8 +59,17 @@ def table_specs(schema: DataSchema | None = None) -> dict[str, TableSpec]:
         TableSpec(t.FACT_JOURNEY, (s.journey_id,), (geo, device, source)),
         TableSpec(t.FACT_CONVERTING_JOURNEY, (s.converting_journey_id,), (geo, device, source)),
         TableSpec(t.FACT_BASKET, (s.basket_id,)),
+        TableSpec(
+            t.FACT_ATTRIBUTION,
+            (s.attribution_id,),
+            (
+                date, geo, device, source,  # source is the TOUCH session's traffic source
+                ForeignKey(s.attribution_model_id, t.DIM_ATTRIBUTION_MODEL, s.attribution_model_id),
+                ForeignKey(s.converting_journey_id, t.FACT_CONVERTING_JOURNEY, s.converting_journey_id),
+                ForeignKey(s.session_id, t.FACT_SESSION, s.session_id),
+            ),
+        ),
         # Bridges. The event bridge has no primary key: an item can appear twice in one event.
-        # The transaction bridge has no item foreign key: GA4 can record a purchased item as '(not set)'.
         TableSpec(
             t.BRIDGE_EVENT_ITEM,
             (),

@@ -144,6 +144,15 @@ class DataSchema:
     community: str = 'community'
     basket_id: str = 'basket_id'
 
+    # --- Attribution
+    attribution_id: str = 'attribution_id'
+    attribution_model_id: str = 'attribution_model_id'
+    attribution_model: str = 'attribution_model'
+    attribution_description: str = 'attribution_description'
+    touch_number: str = 'touch_number'
+    credit: str = 'credit'
+    revenue_credit: str = 'revenue_credit'
+
     # --- Keys. Each is the name of an id column in a dimension table and in the facts that point at it.
     event_id: str = 'event_id'
     date_id: str = 'date_id'

@@ -24,6 +24,7 @@ import polars as pl
 from ga4_ecommerce_analytics_engine.aggregation.journeys import JourneyBuilder
 from ga4_ecommerce_analytics_engine.aggregation.sessions import SessionBuilder
 from ga4_ecommerce_analytics_engine.analytics.basket import BasketAnalyzer
+from ga4_ecommerce_analytics_engine.analytics.attribution import AttributionAnalyzer
 from ga4_ecommerce_analytics_engine.cleaning.transactions import DataCleaner
 from ga4_ecommerce_analytics_engine.dimensions.date import DateDimension
 from ga4_ecommerce_analytics_engine.dimensions.device import DeviceDimension
@@ -53,6 +54,7 @@ DIM_TRAFFIC_SOURCE = "dim_traffic_source"
 DIM_PRODUCT = 'dim_product'
 DIM_ITEM = "dim_item"
 DIM_TRANSACTION = "dim_transaction"
+DIM_ATTRIBUTION_MODEL = "dim_attribution_model"
 BRIDGE_TRANSACTION_ITEM = "bridge_transaction_item"
 BRIDGE_EVENT_ITEM = "bridge_event_item"
 FACT_EVENT = "fact_event"
@@ -62,6 +64,7 @@ FACT_USER = "fact_user"
 FACT_JOURNEY = "fact_journey"
 FACT_CONVERTING_JOURNEY = "fact_converting_journey"
 FACT_BASKET = "fact_basket"
+FACT_ATTRIBUTION = "fact_attribution"
 
 
 @dataclass
@@ -78,18 +81,20 @@ class Pipeline:
     session_builder: SessionBuilder = field(default_factory=SessionBuilder)
     journey_builder: JourneyBuilder = field(default_factory=JourneyBuilder)
     basket: BasketAnalyzer = field(default_factory=BasketAnalyzer)
+    attribution: AttributionAnalyzer = field(default_factory=AttributionAnalyzer)
 
     def run(self, raw: RawData) -> Tables:
         tables: Tables = {}
 
         clean = self._stage('clean', lambda: self.cleaner.clean_transactions(raw.events, raw.items))
-        events, session_utm = self._stage('utm', lambda: tuple(self.utm_builder.enrich_events_with_utm(clean.events)))
+        events, session_utm = self._stage('utm', lambda: tuple(self.utm_builder.resolve(clean.events)))
         session_channels = self._stage('channels', lambda: self.classifier.classify(session_utm))
         sessions = self._stage('sessions', lambda: self.session_builder.build(events, session_channels))
         journeys = self._stage('journeys', lambda: self.journey_builder.build(sessions))
 
         dims = self._stage('dimensions', lambda: self._dimensions(raw, events, clean.items, sessions, tables))
         self._stage('facts', lambda: self._facts(events, clean.items, sessions, journeys, dims, tables))
+        self._stage('attribution', lambda: self._attribution(sessions, dims, tables))
         tables[FACT_BASKET] = self._stage('basket', lambda: self.basket.build(clean.items))
 
         return tables
@@ -137,6 +142,15 @@ class Pipeline:
         journey_facts = JourneyFacts().build(journeys.journeys, journeys.converting)
         tables[FACT_JOURNEY] = attach_keys(journey_facts.journeys, by_user_and_source)
         tables[FACT_CONVERTING_JOURNEY] = attach_keys(journey_facts.converting, by_user_and_source)
+
+    # ---- Attribution ---------------------------------------------------------
+    def _attribution(self, sessions, m, tables: Tables) -> None:
+        result = self.attribution.build(sessions, tables[FACT_CONVERTING_JOURNEY])
+        user, session = self.attribution.user_id, self.attribution.session_id
+        tables[DIM_ATTRIBUTION_MODEL] = result.models
+        tables[FACT_ATTRIBUTION] = attach_keys(
+            result.facts, [(m.geo, user), (m.device, user), (m.traffic_session, session)]
+        )
 
     # ---- Logging --------------------------------------------------------------
 
