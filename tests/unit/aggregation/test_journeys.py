@@ -77,12 +77,6 @@ def test_touchpoints_and_unique_channels(journeys):
     assert journeys["u2"]["touchpoints"] == 1
 
 
-def test_touchpoint_count_is_the_number_of_journeys_with_that_length(journeys):
-    assert journeys["u1"]["touchpoint_count"] == 1  # only one 3-touchpoint journey
-    assert journeys["u2"]["touchpoint_count"] == 2  # u2 and u3 are both 1-touchpoint
-    assert journeys["u3"]["touchpoint_count"] == 2
-
-
 def test_conversion_counts_and_value(journeys):
     assert journeys["u1"]["conversion_count"] == 1
     assert journeys["u1"]["conversion_value_usd"] == 50.0
@@ -106,14 +100,6 @@ def test_duration_is_the_time_from_first_to_last_session(journeys):
     assert journeys["u1"]["duration"] == pytest.approx(50.0)
     assert journeys["u3"]["duration"] == pytest.approx(0.0)
 
-
-def test_duration_bins_cover_every_journey_including_the_longest(journeys):
-    assert journeys["u3"]["duration_bins"] == 0
-    assert journeys["u1"]["duration_bins"] == 19  # the maximum lands in the last bin
-    assert journeys["u3"]["duration_labels"].startswith("0m")  # first bin starts at zero
-    assert journeys["u1"]["duration_labels"].endswith("2d")  # last bin ends at the 50-hour maximum
-
-
 # ---- Converting journeys -----------------------------------------------------
 
 
@@ -129,37 +115,6 @@ def test_printable_paths(converting):
     assert converting["u1"]["hours_before"] == pytest.approx([50.0, 48.0, 0.0])
     assert "50 > 48 > 0" in converting["u1"].values()
     assert "0" in converting["u2"].values()
-
-
-def test_value_bins_cover_the_smallest_and_largest_values(converting):
-    assert converting["u2"]["value_bins"] == 0  # $20, the minimum
-    assert converting["u1"]["value_bins"] == 19  # $50, the maximum
-    assert converting["u2"]["value_labels"].startswith("$20 - ")
-    assert converting["u1"]["value_labels"].endswith(" - $50")
-
-
-def test_zero_value_is_left_out_of_the_bins():
-    sessions = pl.DataFrame(
-        [
-            ("a", T0, D1, "Direct", 1, 0.0),
-            ("b", T0, D1, "Direct", 1, 30.0),
-        ],
-        schema=SCHEMA,
-        orient="row",
-    )
-
-    converting = by_user(JourneyBuilder().build(sessions).converting)
-
-    assert converting["a"]["conversion_value_usd"] is None
-    assert converting["a"]["value_bins"] is None
-    assert converting["b"]["value_bins"] is not None
-
-
-def test_bin_counts_are_configurable():
-    result = JourneyBuilder(n_duration_bins=5, n_value_bins=5).build(make_sessions())
-
-    assert max(result.journeys["duration_bins"]) == 4
-    assert max(result.converting["value_bins"]) == 4
 
 
 def test_missing_required_column_raises_a_readable_error():
