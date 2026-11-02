@@ -24,6 +24,8 @@ import polars as pl
 from ga4_ecommerce_analytics_engine.aggregation.journeys import JourneyBuilder
 from ga4_ecommerce_analytics_engine.aggregation.sessions import SessionBuilder
 from ga4_ecommerce_analytics_engine.analytics.basket import BasketAnalyzer
+from ga4_ecommerce_analytics_engine.analytics.network import CooccurrenceNetwork
+from ga4_ecommerce_analytics_engine.analytics.attribution import AttributionAnalyzer
 from ga4_ecommerce_analytics_engine.cleaning.transactions import DataCleaner
 from ga4_ecommerce_analytics_engine.dimensions.date import DateDimension
 from ga4_ecommerce_analytics_engine.dimensions.device import DeviceDimension
@@ -53,6 +55,9 @@ DIM_TRAFFIC_SOURCE = "dim_traffic_source"
 DIM_PRODUCT = 'dim_product'
 DIM_ITEM = "dim_item"
 DIM_TRANSACTION = "dim_transaction"
+DIM_NETWORK_NODE = "dim_network_node"
+DIM_NETWORK_COMMUNITY = "dim_network_community"
+DIM_ATTRIBUTION_MODEL = "dim_attribution_model"
 DIM_ATTRIBUTION_MODEL = "dim_attribution_model"
 BRIDGE_TRANSACTION_ITEM = "bridge_transaction_item"
 BRIDGE_EVENT_ITEM = "bridge_event_item"
@@ -63,6 +68,8 @@ FACT_USER = "fact_user"
 FACT_JOURNEY = "fact_journey"
 FACT_CONVERTING_JOURNEY = "fact_converting_journey"
 FACT_BASKET = "fact_basket"
+FACT_NETWORK_EDGE = "fact_network_edge"
+FACT_NETWORK_STAGE = "fact_network_stage"
 FACT_ATTRIBUTION = "fact_attribution"
 
 
@@ -80,7 +87,9 @@ class Pipeline:
     session_builder: SessionBuilder = field(default_factory=SessionBuilder)
     journey_builder: JourneyBuilder = field(default_factory=JourneyBuilder)
     basket: BasketAnalyzer = field(default_factory=BasketAnalyzer)
+    network: CooccurrenceNetwork = field(default_factory=CooccurrenceNetwork)
     attribution: AttributionAnalyzer = field(default_factory=AttributionAnalyzer)
+    
 
     def run(self, raw: RawData) -> Tables:
         tables: Tables = {}
@@ -94,14 +103,20 @@ class Pipeline:
         dims = self._stage('dimensions', lambda: self._dimensions(raw, events, clean.items, sessions, tables))
         self._stage('facts', lambda: self._facts(events, clean.items, sessions, journeys, dims, tables))
         self._stage('attribution', lambda: self._attribution(sessions, dims, tables))
-        tables[FACT_BASKET] = self._stage('basket', lambda: self.basket.build(clean.items))
+        basket = self._stage("basket", lambda: self.basket.build(clean.items))
+        tables[FACT_BASKET] = basket
+
+        network = self._stage("network", lambda: self.network.build(clean.items))
+        tables[DIM_NETWORK_NODE] = network.nodes
+        tables[DIM_NETWORK_COMMUNITY] = network.communities
+        tables[FACT_NETWORK_EDGE] = network.edges
+        tables[FACT_NETWORK_STAGE] = network.stages
 
         return tables
 
     # ---- Dimensions -----------------------------------------------------------
 
     def _dimensions(self, raw, events, items, sessions, tables: Tables) -> "_Mappings":
-
         geo, geo_users = GeoDimension().build_with_user_mapping(raw.dimensions)
         device, device_users = DeviceDimension().build_with_user_mapping(raw.dimensions)
         traffic = TrafficSourceDimension().build_with_mappings(sessions)
