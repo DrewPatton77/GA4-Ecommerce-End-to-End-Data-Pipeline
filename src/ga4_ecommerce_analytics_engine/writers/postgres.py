@@ -53,7 +53,6 @@ class PostgresConfig:
         )
 
     def connect(self) -> Connection:
-        print(self)
         return connect(
             host=self.host, port=self.port, dbname=self.database, user=self.user, password=self.password
         )
