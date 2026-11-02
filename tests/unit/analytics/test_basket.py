@@ -52,6 +52,20 @@ def test_purchase_lines_remove_colour_words_and_merge_the_resulting_duplicates()
     }
 
 
+def test_variants_of_one_item_are_summed_into_one_line_per_transaction():
+    items = make_items(
+        [
+            ("t1", "purchase", "Tee", 14.0),  # the same product in two sizes: the items table has a row per variant
+            ("t1", "purchase", "Tee", 28.0),
+            ("t2", "purchase", "Tee", 14.0),
+        ]
+    ).with_columns(pl.Series("item_variant", [" LG", " MD", " MD"]))
+
+    lines = BasketAnalyzer().purchase_lines(items)
+
+    assert {row["transaction_id"]: row["item_revenue"] for row in lines.iter_rows(named=True)} == {"t1": 42.0, "t2": 14.0}
+
+
 def test_item_names_are_left_alone_when_the_filter_is_off():
     items = make_items([("t1", "purchase", "Hoodie Blue", 10.0)])
 
@@ -82,7 +96,7 @@ def test_pair_metrics_for_an_item_pair():
     rows = by_basket(BasketAnalyzer().pair_metrics(matrix, ["A", "B", "C"]))
 
     ab = rows["A - B"]
-    assert (ab["antecedent"], ab["consequent"], ab["is_self_node"]) == ("A", "B", 0)
+    assert (ab["antecedent"], ab["consequent"]) == ("A", "B")
     assert ab["number_of_transactions"] == 2
     assert ab["support_of_basket"] == pytest.approx(0.5)
     assert ab["confidence_of_first_item"] == pytest.approx(1.0)  # 2 together / 2 transactions with B
@@ -91,40 +105,31 @@ def test_pair_metrics_for_an_item_pair():
     assert ab["value"] == 70  # revenue of A (30) plus revenue of B (40)
 
 
-def test_pair_metrics_has_a_self_row_per_item_and_skips_not_set():
+def test_pair_metrics_has_one_row_per_pair_and_skips_not_set():
     matrix = np.array([[10, 20, 3], [10, 0, 3]], dtype=float)
 
     rows = by_basket(BasketAnalyzer().pair_metrics(matrix, ["A", "(not set)", "C"]))
 
-    assert set(rows) == {"A", "A - C", "C"}  # nothing involving '(not set)'
-    assert rows["A"]["is_self_node"] == 1
-    assert rows["A"]["number_of_transactions"] == 2
-    assert rows["A"]["value"] == 20  # A's own revenue, not doubled
+    assert set(rows) == {"A - C"}  # no item rows, nothing involving '(not set)'
+    assert rows["A - C"]["number_of_transactions"] == 2
 
 
-def test_build_gives_ids_and_gives_a_cluster_of_items_one_community():
-    pytest.importorskip('networkx')
-    purchases = [
-        (t, 'purchase', item, 10.0) for t in ('t1', 't2', 't3') for item in ('A', 'B', 'C')
-    ] + [('t4', 'purchase', 'D', 5.0)]
+def test_build_gives_one_numbered_row_per_pair():
+    result = BasketAnalyzer(prune_pairs=False).build(make_items(PURCHASES))
 
-    result = BasketAnalyzer().build(make_items(purchases))
-    rows = by_basket(result)
+    assert set(by_basket(result)) == {"A - B", "A - C", "B - C"}
+    assert result["basket_id"].to_list() == [0, 1, 2]
+    assert "community" not in result.columns
 
-    assert result.height == 10  # four self rows and six pairs
-    assert result['basket_id'].to_list() == list(range(10))
-    cluster = {rows[pair]['community'] for pair in ('A - B', 'A - C', 'B - C')}
-    assert len(cluster) == 1 and None not in cluster  # one shared community
-    assert rows['A - D']['community'] is None  # never bought together
-    assert rows['A']['community'] is None  # self rows never take part
+
+def test_pairs_below_the_support_cut_off_are_dropped():
+    result = BasketAnalyzer(min_support=0.3).build(make_items(PURCHASES))  # A+B has support 0.5; the others 0
+
+    assert set(by_basket(result)) == {"A - B"}
 
 
 def test_no_purchases_gives_an_empty_table_with_the_right_columns():
-    pytest.importorskip("networkx")
-    items = make_items([("t1", "view_item", "A", 1.0)])
-
-    result = BasketAnalyzer().build(items)
+    result = BasketAnalyzer().build(make_items([("t1", "view_item", "A", 1.0)]))
 
     assert result.height == 0
-    assert {"basket", "lift", "community", "basket_id"} <= set(result.columns)
-
+    assert {"basket", "support_of_basket", "lift", "basket_id"} <= set(result.columns)

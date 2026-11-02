@@ -1,9 +1,8 @@
-'''
-The warehouse model: which tables exist, their primary keys and foreign keys.
+"""The warehouse model: which tables exist, their primary keys and foreign keys.
 
 Column names come from DataSchema, so renaming a key there renames it here too.
 The loader uses this to create tables, load them in the right order and add the constraints.
-'''
+"""
 
 from __future__ import annotations
 
@@ -40,6 +39,7 @@ def table_specs(schema: DataSchema | None = None) -> dict[str, TableSpec]:
     date = ForeignKey(s.date_id, t.DIM_DATE, s.date_id)
     item = ForeignKey(s.item_key, t.DIM_ITEM, s.item_key)
     product = ForeignKey(s.product_key, t.DIM_PRODUCT, s.product_key)
+    network_community = ForeignKey(s.community, t.DIM_NETWORK_COMMUNITY, s.community)
 
     specs = [
         # Dimensions
@@ -59,6 +59,17 @@ def table_specs(schema: DataSchema | None = None) -> dict[str, TableSpec]:
         TableSpec(t.FACT_JOURNEY, (s.journey_id,), (geo, device, source)),
         TableSpec(t.FACT_CONVERTING_JOURNEY, (s.converting_journey_id,), (geo, device, source)),
         TableSpec(t.FACT_BASKET, (s.basket_id,)),
+        TableSpec(t.DIM_NETWORK_COMMUNITY, (s.community,)),
+        TableSpec(t.DIM_NETWORK_NODE, (s.item_id,), (network_community,)),  # item_id is the item NAME column here
+        TableSpec(
+            t.FACT_NETWORK_EDGE,
+            (s.network_edge_id,),
+            (
+                ForeignKey(s.community_a, t.DIM_NETWORK_COMMUNITY, s.community),
+                ForeignKey(s.community_b, t.DIM_NETWORK_COMMUNITY, s.community),
+            ),
+        ),
+        TableSpec(t.FACT_NETWORK_STAGE, (s.stage_order,)),
         TableSpec(
             t.FACT_ATTRIBUTION,
             (s.attribution_id,),
@@ -85,15 +96,13 @@ def table_specs(schema: DataSchema | None = None) -> dict[str, TableSpec]:
 
 
 def load_order(specs: dict[str, TableSpec]) -> list[str]:
-    '''
-    Table names with every table after the tables it points at (parents first)
-    '''
+    """Table names with every table after the tables it points at (parents first)."""
     ordered: list[str] = []
     remaining = dict(specs)
     while remaining:
         ready = [name for name, spec in remaining.items() if (spec.parents - {name}) <= set(ordered)]
         if not ready:
-            raise ValueError(f'Foreign keys form a cycle among: {sorted(remaining)}')
+            raise ValueError(f"Foreign keys form a cycle among: {sorted(remaining)}")
         for name in ready:
             ordered.append(name)
             del remaining[name]

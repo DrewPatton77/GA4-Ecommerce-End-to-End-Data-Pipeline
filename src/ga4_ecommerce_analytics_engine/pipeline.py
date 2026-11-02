@@ -24,7 +24,6 @@ import polars as pl
 from ga4_ecommerce_analytics_engine.aggregation.journeys import JourneyBuilder
 from ga4_ecommerce_analytics_engine.aggregation.sessions import SessionBuilder
 from ga4_ecommerce_analytics_engine.analytics.basket import BasketAnalyzer
-from ga4_ecommerce_analytics_engine.analytics.attribution import AttributionAnalyzer
 from ga4_ecommerce_analytics_engine.cleaning.transactions import DataCleaner
 from ga4_ecommerce_analytics_engine.dimensions.date import DateDimension
 from ga4_ecommerce_analytics_engine.dimensions.device import DeviceDimension

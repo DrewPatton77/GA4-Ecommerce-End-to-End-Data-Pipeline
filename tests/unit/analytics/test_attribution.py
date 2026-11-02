@@ -1,6 +1,4 @@
-'''
-Minimal tests for analytics/attribution.py (AttributionAnalyzer)
-'''
+"""Minimal tests for analytics/attribution.py (AttributionAnalyzer)."""
 
 from __future__ import annotations
 
@@ -14,18 +12,18 @@ from ga4_ecommerce_analytics_engine.analytics.attribution import MODELS, Attribu
 T0 = datetime(2020, 12, 1)
 
 
-def make_sessions(paths: dict[str, list[tuple[str, float]]]) -> pl.DataFrame:
-    '''
-    paths: user -> [(channel, hours after T0), ...] in time order
-    '''
+def make_sessions(paths: dict[str, list[tuple]]) -> pl.DataFrame:
+    """paths: user -> [(channel, hours after T0[, converted 0/1]), ...] in time order.
+    Without the third value, a user's last session is the purchase session."""
     rows = []
     for user, path in paths.items():
-        for k, (channel, hours) in enumerate(path):
+        for k, (channel, hours, *flag) in enumerate(path):
             start = T0 + timedelta(hours=hours)
-            rows.append((user, f"{user}-{k}", start, start.date(), channel))
+            converted = flag[0] if flag else int(k == len(path) - 1)
+            rows.append((user, f"{user}-{k}", start, start.date(), channel, converted))
     schema = {
         "user_pseudo_id": pl.Utf8, "session_id": pl.Utf8, "session_start": pl.Datetime,
-        "session_date": pl.Date, "channel": pl.Utf8,
+        "session_date": pl.Date, "channel": pl.Utf8, "converted": pl.Int8,
     }
     return pl.DataFrame(rows, schema=schema, orient="row")
 
@@ -117,3 +115,19 @@ def test_every_model_shares_out_each_journeys_credit_and_revenue_exactly():
     expected = {i: v for i, v in enumerate(values.values())}  # journey id -> revenue
     for row in per_journey.iter_rows(named=True):
         assert row["revenue_credit"] == pytest.approx(expected[row["converting_journey_id"]])
+
+
+def test_sessions_after_the_last_purchase_get_no_credit():
+    sessions = make_sessions({"u1": [("Email", 0, 0), ("Direct", 24, 1), ("Paid Search", 100, 0)]})  # the last visit is after the purchase
+    result = AttributionAnalyzer().build(sessions, make_converting({"u1": 60.0}))
+
+    assert by_channel(sessions, result, "Linear") == pytest.approx({"Email": 0.5, "Direct": 0.5})  # no Paid Search
+    assert by_channel(sessions, result, "Last-Click") == {"Direct": 1.0}  # the purchase session, not the last visit
+    assert result.facts["date_id"].max() == 20201202  # nothing is credited on the day of the later visit
+
+
+def test_direct_is_matched_whatever_its_case():
+    sessions = make_sessions({"u1": [("Email", 0), ("direct", 24)]})
+    result = AttributionAnalyzer().build(sessions, make_converting({"u1": 10.0}))
+
+    assert by_channel(sessions, result, "Last-Click Non-Direct") == {"Email": 1.0}

@@ -1,5 +1,4 @@
-'''
-Marketing attribution: which channel should get credit for a conversion?
+"""Marketing attribution: which channel should get credit for a conversion?
 
     result = AttributionAnalyzer().build(sessions, converting_journeys)
     result.facts     one row per session (touch) in a converting journey, per model: credit and revenue credit
@@ -16,20 +15,26 @@ revenue is shared out exactly), so any model's totals add up to the same revenue
     Shapley Value                 equal credit to every DISTINCT channel in the journey
     Markov Chain                  credit follows each channel's removal effect (see removal_effects)
 
+Only the sessions up to and including the user's LAST purchasing session get credit: a session after the last
+purchase cannot have influenced it. (Time-Decay is measured from that purchase session.) Users who never convert
+keep every session, since they only shape the Markov chain.
+
+The Direct channel is matched ignoring case and spaces, so 'Direct' and 'direct' are the same channel.
+
 A channel with several sessions in one journey shares its credit between them, so credit summed by channel
 matches the channel-level tables of the heuristic models exactly.
 
 The Markov model is channel-level by nature (one removal effect per channel). To get credit per session, each
 journey's credit is split between the distinct channels in it in proportion to their removal effects, so
-Markov totals are NOT the same as 'removal effect x total revenue'. Use `removal_effects` for that.
+Markov totals are NOT the same as "removal effect x total revenue". Use `removal_effects` for that.
 
 The steps are separate methods so each can be tested on its own:
 
-    touches            sessions -> one row per session, in order, with its position and hours before the last one
+    touches            sessions -> one row per session up to the last purchase, in order, with its position and hours before it
     converting_users   converting journeys -> user, journey id, revenue (the users that get credit)
     removal_effects    all touches -> each channel's share of the conversions that depend on it (Markov)
     models_table       the model dimension
-'''
+"""
 
 from __future__ import annotations
 
@@ -45,22 +50,22 @@ from ga4_ecommerce_analytics_engine.schema import DataSchema
 MICROS_PER_HOUR = 3_600_000_000
 
 # Markov states besides the channels themselves.
-START, CONVERSION, NULL = 'Start', 'Conversion', 'Null'
+START, CONVERSION, NULL = "Start", "Conversion", "Null"
 
 # (name, description), in key order: the first model gets key 0.
 MODELS: tuple[tuple[str, str], ...] = (
-    ('First-Click', 'All credit to the first session of the journey.'),
-    ('Last-Click', 'All credit to the last session of the journey.'),
-    ('Last-Click Non-Direct', 'All credit to the last session that was not Direct (the last session if all were Direct).'),
-    ('Linear', 'Equal credit to every session.'),
-    ('Position-Based', '40% to the first and 40% to the last session, 20% shared by the middle ones.'),
-    ('Time-Decay', 'More credit to sessions closer to the end of the journey (7-day half-life).'),
-    ('Shapley Value', 'Equal credit to every distinct channel in the journey.'),
-    ('Markov Chain', "Credit split by each channel's removal effect: how many conversions are lost without it."),
+    ("First-Click", "All credit to the first session of the journey."),
+    ("Last-Click", "All credit to the last session of the journey."),
+    ("Last-Click Non-Direct", "All credit to the last session that was not Direct (the last session if all were Direct)."),
+    ("Linear", "Equal credit to every session."),
+    ("Position-Based", "40% to the first and 40% to the last session, 20% shared by the middle ones."),
+    ("Time-Decay", "More credit to sessions closer to the end of the journey (7-day half-life)."),
+    ("Shapley Value", "Equal credit to every distinct channel in the journey."),
+    ("Markov Chain", "Credit split by each channel's removal effect: how many conversions are lost without it."),
 )
 
 # Working columns, dropped before the result is returned.
-_INDEX, _COUNT, _HOURS, _CONVERTS, _MODEL = '_touch_index', '_touches', '_hours_before', '_converts', '_model'
+_INDEX, _COUNT, _HOURS, _CONVERTS, _MODEL = "_touch_index", "_touches", "_hours_before", "_converts", "_model"
 
 
 class AttributionResult(NamedTuple):
@@ -71,20 +76,18 @@ class AttributionResult(NamedTuple):
 @dataclass(frozen=True)
 class AttributionAnalyzer(DataSchema):
     half_life_hours: float = 168.0  # Time-Decay: a session this many hours before the last one counts half as much
-    direct_channel: str = 'Direct'
-    unknown_channel: str = 'Unclassified'  # label for a session with no channel, so it can be a Markov state
+    direct_channel: str = "Direct"
+    unknown_channel: str = "Unclassified"  # label for a session with no channel, so it can be a Markov state
 
     # ---- Public ---------------------------------------------------------------
 
     def build(self, sessions: pl.DataFrame, converting: pl.DataFrame) -> AttributionResult:
-        '''
-        `sessions`: every session. `converting`: converting journeys, one row per user (the journey facts)
-        '''
+        """`sessions`: every session. `converting`: converting journeys, one row per user (the journey facts)."""
         touches = self.touches(sessions)
         users = self.converting_users(converting)
 
         weights = self.removal_effects(touches, users)
-        credited = touches.join(users, on=self.user_id, how='inner')
+        credited = touches.join(users, on=self.user_id, how="inner")
         credited = credited.with_columns(self._credit_expressions(weights))
 
         models = self.models_table()
@@ -139,22 +142,30 @@ class AttributionAnalyzer(DataSchema):
     # ---- 1. Touches -----------------------------------------------------------
 
     def touches(self, sessions: pl.DataFrame) -> pl.DataFrame:
-        '''
-        Every session as a touch: its place in the user's path and the hours before the user's last session
-        '''
+        """Every session as a touch: its place in the user's path and the hours before the path's last session.
+
+        A user who bought has the sessions after their last purchase session removed: they cannot have caused it.
+        The position, count and hours are measured on what is left, so the path ends at the purchase."""
         self.check_required_columns(
             sessions,
             required_columns={
                 self.user_id, self.session_id, self.session_start_timestamp, self.session_date, self.channel,
+                self.converted,
             },
         )
         start = pl.col(self.session_start_timestamp)
+        last_purchase = (
+            pl.when(pl.col(self.converted).fill_null(0) > 0).then(start).otherwise(None).max().over(self.user_id)
+        )  # null for a user who never bought
         return (
             sessions.select(
-                self.user_id, self.session_id, self.session_start_timestamp, self.session_date, self.channel
+                self.user_id, self.session_id, self.session_start_timestamp, self.session_date, self.channel,
+                self.converted,
             )
             .with_columns(pl.col(self.channel).fill_null(self.unknown_channel))
             .sort([self.user_id, self.session_start_timestamp, self.session_id], maintain_order=True)
+            .filter(last_purchase.is_null() | (start <= last_purchase))
+            .drop(self.converted)
             .with_columns(
                 pl.int_range(pl.len(), dtype=pl.Int64).over(self.user_id).alias(_INDEX),
                 pl.len().over(self.user_id).cast(pl.Int64).alias(_COUNT),
@@ -166,14 +177,12 @@ class AttributionAnalyzer(DataSchema):
         )
 
     def converting_users(self, converting: pl.DataFrame) -> pl.DataFrame:
-        '''
-        The users that get credit: their journey id and total revenue (a missing value counts as 0)
-        '''
+        """The users that get credit: their journey id and total revenue (a missing value counts as 0)."""
         self.check_required_columns(
             converting, required_columns={self.user_id, self.converting_journey_id, self.conversion_value}
         )
         if converting[self.user_id].is_duplicated().any():
-            raise ValueError('The converting journeys have more than one row per user; credit would be counted twice.')
+            raise ValueError("The converting journeys have more than one row per user; credit would be counted twice.")
         return converting.select(
             self.user_id,
             self.converting_journey_id,
@@ -183,17 +192,14 @@ class AttributionAnalyzer(DataSchema):
     # ---- 2. Credit per model --------------------------------------------------
 
     def _credit_expressions(self, weights: dict[str, float]) -> list[pl.Expr]:
-        '''
-        One expression per model: each touch's share of its journey's credit (the shares add up to 1)
-        '''
+        """One expression per model: each touch's share of its journey's credit (the shares add up to 1)."""
         user, channel = pl.col(self.user_id), pl.col(self.channel)
         i, n = pl.col(_INDEX), pl.col(_COUNT)
         is_first, is_last = i == 0, i == n - 1
 
         # Index of the last session that was not Direct; null when every session was Direct, so fall back to the last.
-        last_non_direct = pl.coalesce(
-            pl.when(channel != self.direct_channel).then(i).otherwise(None).max().over(self.user_id), n - 1
-        )
+        is_direct = channel.str.strip_chars().str.to_lowercase() == self.direct_channel.strip().lower()
+        last_non_direct = pl.coalesce(pl.when(~is_direct).then(i).otherwise(None).max().over(self.user_id), n - 1)
 
         position = (
             pl.when(n == 1).then(1.0)
@@ -214,40 +220,39 @@ class AttributionAnalyzer(DataSchema):
         markov = pl.when(weight_total > 0).then(weight / weight_total).otherwise(shapley)  # no weights: equal split
 
         shares = {
-            'First-Click': is_first.cast(pl.Float64),
-            'Last-Click': is_last.cast(pl.Float64),
-            'Last-Click Non-Direct': (i == last_non_direct).cast(pl.Float64),
-            'Linear': 1.0 / n,
-            'Position-Based': position,
-            'Time-Decay': decay / decay.sum().over(self.user_id),
-            'Shapley Value': shapley,
-            'Markov Chain': markov,
+            "First-Click": is_first.cast(pl.Float64),
+            "Last-Click": is_last.cast(pl.Float64),
+            "Last-Click Non-Direct": (i == last_non_direct).cast(pl.Float64),
+            "Linear": 1.0 / n,
+            "Position-Based": position,
+            "Time-Decay": decay / decay.sum().over(self.user_id),
+            "Shapley Value": shapley,
+            "Markov Chain": markov,
         }
         return [expression.alias(name) for name, expression in shares.items()]
 
     # ---- 3. Markov removal effects --------------------------------------------
 
     def removal_effects(self, touches: pl.DataFrame, converting: pl.DataFrame) -> dict[str, float]:
-        '''
-        Each channel's share (adds up to 1) of the conversions that would be lost if the channel were removed.
+        """Each channel's share (adds up to 1) of the conversions that would be lost if the channel were removed.
 
         Uses every user's path (converting or not): Start -> channel -> ... -> Conversion or Null. The conversion
         probability from Start is solved exactly, then again with each channel's incoming transitions removed.
-        `converting` is the frame from `converting_users`
-        '''
+        `converting` is the frame from `converting_users`.
+        """
         flagged = touches.join(
-            converting.select(self.user_id).with_columns(pl.lit(True).alias(_CONVERTS)), on=self.user_id, how='left'
+            converting.select(self.user_id).with_columns(pl.lit(True).alias(_CONVERTS)), on=self.user_id, how="left"
         ).with_columns(pl.col(_CONVERTS).fill_null(False))
 
         channel = pl.col(self.channel)
         outcome = pl.when(pl.col(_CONVERTS)).then(pl.lit(CONVERSION)).otherwise(pl.lit(NULL))
         steps = pl.concat(
             [
-                flagged.filter(pl.col(_INDEX) == 0).select(pl.lit(START).alias('source'), channel.alias('target')),
+                flagged.filter(pl.col(_INDEX) == 0).select(pl.lit(START).alias("source"), channel.alias("target")),
                 flagged.select(
-                    channel.alias('source'),
+                    channel.alias("source"),
                     # the next session's channel, or the journey's outcome after the last one
-                    pl.coalesce(channel.shift(-1).over(self.user_id), outcome).alias('target'),
+                    pl.coalesce(channel.shift(-1).over(self.user_id), outcome).alias("target"),
                 ),
             ]
         )
@@ -258,7 +263,7 @@ class AttributionAnalyzer(DataSchema):
         position = {state: k for k, state in enumerate(states)}
 
         counts = np.zeros((len(transient), len(states)))
-        for source, target, count in steps.group_by(['source', 'target']).len().iter_rows():
+        for source, target, count in steps.group_by(["source", "target"]).len().iter_rows():
             counts[position[source], position[target]] += count
         totals = counts.sum(axis=1, keepdims=True)
         probabilities = np.divide(counts, totals, out=np.zeros_like(counts), where=totals > 0)

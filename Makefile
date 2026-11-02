@@ -2,7 +2,7 @@
 # Override dates on the command line:  make run START=2020-12-01 END=2020-12-31
 
 START ?= 2020-11-01
-END   ?= 2021-01-31
+END   ?= 2021-01-25
 UV    := uv run
 
 .DEFAULT_GOAL := help

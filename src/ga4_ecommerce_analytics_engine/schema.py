@@ -141,10 +141,62 @@ class DataSchema:
     lift: str = 'lift'
     is_self_node: str = 'is_self_node'
     basket_value: str = 'value'
-    community: str = 'community'
     basket_id: str = 'basket_id'
 
-    # --- Attribution
+    # --- Basket Network -----------
+
+    # network: layout
+    layout_x: str = 'layout_x'
+    layout_y: str = 'layout_y'
+
+
+    # network: nodes
+    degree: str = 'degree'
+    strength: str = 'strength'
+    betweenness: str = 'betweenness'
+    closeness: str = 'closeness'
+    clustering: str = 'clustering'
+    raw_degree: str = 'raw_degree'
+    raw_strength: str = 'raw_strength'
+    hub_rank: str = 'hub_rank'
+    is_hub: str = 'is_hub'
+    item_baskets: str = 'item_baskets'
+    item_revenue: str = 'item_revenue'
+    community: str = 'community'
+    community_label: str = 'community_label'
+
+    # network: edges
+    network_edge_id: str = 'network_edge_id'
+    item_a: str = 'item_a'
+    item_b: str = 'item_b'
+    cooccurrence: str = 'cooccurrence'
+    confidence_a_to_b: str = 'confidence_a_to_b'
+    confidence_b_to_a: str = 'confidence_b_to_a'
+    edge_alpha: str = 'edge_alpha'
+    edge_betweenness: str = 'edge_betweenness'
+    community_a: str = 'community_a'
+    community_b: str = 'community_b'
+    is_bridge: str = 'is_bridge'
+
+    # network: communities
+    community_hub: str = 'community_hub'
+    community_title: str = 'community_title'
+    community_item_count: str = 'community_item_count'
+    community_edges: str = 'community_edges'
+    bridge_edges: str = 'bridge_edges'
+    density: str = 'density'
+    total_cooccurrence: str = 'total_cooccurrence'
+    average_lift: str = 'average_lift'
+    community_items: str = 'community_items'
+
+    # network: stages
+    stage_order: str = 'stage_order'
+    stage: str = 'stage'
+    edges: str = 'edges'
+    nodes: str = 'nodes'
+    modularity: str = 'modularity'
+
+    # --- Attribution scope -------------------------------------------------------------
     attribution_id: str = 'attribution_id'
     attribution_model_id: str = 'attribution_model_id'
     attribution_model: str = 'attribution_model'

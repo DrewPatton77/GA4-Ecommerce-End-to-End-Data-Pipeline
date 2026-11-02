@@ -1,16 +1,26 @@
-'''
-Basket analysis: which items are bought together?
+"""Basket analysis: which items are bought together?
 
-    BasketAnalyzer().build(items)  ->  one row per item (a "self" row) and per item pair, with
-                                       transactions, support, confidence, lift, value and a community.
+    baskets = BasketAnalyzer().build(items)
+
+One row per item PAIR (the alphabetically first item is the antecedent) with:
+    number_of_transactions        baskets holding both items
+    support_of_basket             number_of_transactions / all baskets
+    confidence_of_first_item      share of baskets with the SECOND item that also hold the first
+    confidence_of_second_item     share of baskets with the FIRST item that also hold the second
+    lift                          support(pair) / (support(first) * support(second)); above 1 = bought together more
+                                  often than expected, below 1 = less often
+    basket_value                  revenue of both items, summed over every transaction
+
+Pairs below `min_support` are dropped (`prune_pairs`): most pairs are almost never bought together, and a pair seen a
+handful of times says nothing (its lift is noise).
 
 The steps are separate methods so each can be tested on its own:
 
     purchase_lines   purchase rows -> (transaction, item, revenue), with colour/size words removed from names
     basket_matrix    lines -> transactions x items revenue matrix (numpy) and the item names
     pair_metrics     matrix -> one row per item pair with the association metrics
-    add_communities  group strongly-associated items into communities (Louvain)
-'''
+    prune            drop pairs below `min_support`
+"""
 
 from __future__ import annotations
 
@@ -22,32 +32,29 @@ import polars as pl
 from ga4_ecommerce_analytics_engine.facts.common import add_id
 from ga4_ecommerce_analytics_engine.schema import DataSchema
 
-PAIR_SEPARATOR = ' - '
+PAIR_SEPARATOR = " - "
 
 # Words removed from item names so "Hoodie Blue" and "Hoodie Red" count as the same item.
 # (These are regex fragments, exactly as in the legacy code, so '(Blue/Green)' matches the text Blue/Green.)
 DEFAULT_FILTERED_TERMS: tuple[str, ...] = (
-    'Black', 'Blue', 'Red', 'Yellow', 'White', '(Blue/Green)', '(Multicolored)', '(Red/Yellow)', 'Charcoal', 'Coral',
-    'Gray', 'Green', 'Grey', 'Ivory', 'Mint', 'Moss', 'Navy', 'Olive', 'Orange', 'Pink', 'Grass', 'Neon', 'Light',
-    'Citron', 'Lilac', 'Cloud', 'Confetti', '24 oz', '24oz',
+    "Black", "Blue", "Red", "Yellow", "White", "(Blue/Green)", "(Multicolored)", "(Red/Yellow)", "Charcoal", "Coral",
+    "Gray", "Green", "Grey", "Ivory", "Mint", "Moss", "Navy", "Olive", "Orange", "Pink", "Grass", "Neon", "Light",
+    "Citron", "Lilac", "Cloud", "Confetti", "24 oz", "24oz",
 )
 
 
 @dataclass(frozen=True)
 class BasketAnalyzer(DataSchema):
-    # Communities are built from pairs with at least this support and this confidence (in either direction).
-    min_support: float = 0.002
-    min_confidence: float = 0.20
-    community_seed: int = 42
+    min_support: float = 0.002  # about 10 baskets
+    prune_pairs: bool = True  # keep only pairs with support >= min_support
 
     use_item_filter: bool = True
     filtered_terms: tuple[str, ...] = DEFAULT_FILTERED_TERMS
 
     def build(self, items: pl.DataFrame) -> pl.DataFrame:
-        lines = self.purchase_lines(items)
-        matrix, names = self.basket_matrix(lines)
-        baskets = add_id(self.pair_metrics(matrix, names), self.basket_id)
-        return self.add_communities(baskets)
+        matrix, names = self.basket_matrix(self.purchase_lines(items))
+        pairs = self.pair_metrics(matrix, names)
+        return add_id(self.prune(pairs) if self.prune_pairs else pairs, self.basket_id)
 
     # ---- 1. Purchase lines ----------------------------------------------------
 
@@ -78,9 +85,7 @@ class BasketAnalyzer(DataSchema):
     # ---- 2. Basket matrix -----------------------------------------------------
 
     def basket_matrix(self, lines: pl.DataFrame) -> tuple[np.ndarray, list[str]]:
-        '''
-        A (transactions x items) revenue matrix. Items are sorted by name; items never bought are dropped
-        '''
+        """A (transactions x items) revenue matrix. Items are sorted by name; items never bought are dropped."""
         if lines.height == 0:
             return np.zeros((0, 0)), []
 
@@ -97,9 +102,7 @@ class BasketAnalyzer(DataSchema):
     # ---- 3. Pair metrics ------------------------------------------------------
 
     def pair_metrics(self, matrix: np.ndarray, items: list[str]) -> pl.DataFrame:
-        '''
-        One row per item (is_self_node = 1) and per pair of different items, ordered by (i, j) with i <= j
-        '''
+        """One row per pair of different items, ordered by (i, j) with i < j."""
         if not items:
             return self._empty()
 
@@ -115,14 +118,13 @@ class BasketAnalyzer(DataSchema):
         lift = support / np.outer(diagonal, diagonal)  # support[i, j] / (support[i] * support[j])
 
         names = np.array(items, dtype=object)
-        i, j = np.triu_indices(len(items))
+        i, j = np.triu_indices(len(items), k=1)
         keep = (names[i] != self.not_set) & (names[j] != self.not_set)
         i, j = i[keep], j[keep]
-        is_self = i == j
 
         antecedent, consequent = names[i].tolist(), names[j].tolist()
-        basket = [a if same else f"{a}{PAIR_SEPARATOR}{c}" for a, c, same in zip(antecedent, consequent, is_self)]
-        value = np.where(is_self, pair_revenue[i, j] / 2, pair_revenue[i, j]).astype(np.int64)
+        basket = [f"{a}{PAIR_SEPARATOR}{c}" for a, c in zip(antecedent, consequent)]
+        value = pair_revenue[i, j].astype(np.int64)
 
         return pl.DataFrame(
             {
@@ -134,7 +136,6 @@ class BasketAnalyzer(DataSchema):
                 self.confidence_of_first_item: confidence[i, j],
                 self.confidence_of_second_item: confidence[j, i],
                 self.lift: lift[i, j],
-                self.is_self_node: is_self.astype(np.int8),
                 self.basket_value: value,
             }
         )
@@ -145,60 +146,10 @@ class BasketAnalyzer(DataSchema):
                 self.antecedent: pl.Utf8, self.consequent: pl.Utf8, self.basket: pl.Utf8,
                 self.number_of_transactions: pl.Int64, self.support_of_basket: pl.Float64,
                 self.confidence_of_first_item: pl.Float64, self.confidence_of_second_item: pl.Float64,
-                self.lift: pl.Float64, self.is_self_node: pl.Int8, self.basket_value: pl.Int64,
+                self.lift: pl.Float64, self.basket_value: pl.Int64,
             }
         )
 
-    # ---- 4. Communities -------------------------------------------------------
-
-    def add_communities(self, baskets: pl.DataFrame) -> pl.DataFrame:
-        '''
-        Add a `community` column: items strongly associated with each other share a community number.
-
-        Only pairs with enough support and confidence take part. Every other row gets null. A pair whose two
-        items sit in different communities gets the higher community number
-        '''
-        import networkx as nx
-
-        no_communities = baskets.with_columns(pl.lit(None, dtype=pl.Int64).alias(self.community))
-
-        strong = (
-            baskets.filter(
-                (pl.col(self.is_self_node) == 0)
-                & (pl.col(self.support_of_basket) >= self.min_support)
-                & (
-                    (pl.col(self.confidence_of_first_item) >= self.min_confidence)
-                    | (pl.col(self.confidence_of_second_item) >= self.min_confidence)
-                )
-            )
-            .sort(
-                [self.confidence_of_first_item, self.confidence_of_second_item],
-                descending=[True, True],
-                maintain_order=True,
-            )
-        )
-        if strong.height == 0:
-            return no_communities
-
-        graph = nx.DiGraph()
-        for row in strong.iter_rows(named=True):
-            graph.add_edge(
-                row[self.antecedent],
-                row[self.consequent],
-                lift=row[self.lift],
-                transactions=row[self.number_of_transactions],
-            )
-
-        communities = nx.community.louvain_communities(graph, seed=self.community_seed)
-        membership = {item: number for number, members in enumerate(c for c in communities if c) for item in members}
-
-        strong = strong.with_columns(
-            pl.max_horizontal(
-                pl.col(self.antecedent).replace_strict(membership, return_dtype=pl.Int64),
-                pl.col(self.consequent).replace_strict(membership, return_dtype=pl.Int64),
-            ).alias(self.community)
-        )
-        
-        return baskets.join(
-            strong.select(self.basket, self.community), on=self.basket, how="left", maintain_order="left"
-        )
+    def prune(self, baskets: pl.DataFrame) -> pl.DataFrame:
+        """Drop the pairs below `min_support`."""
+        return baskets.filter(pl.col(self.support_of_basket) >= self.min_support)
