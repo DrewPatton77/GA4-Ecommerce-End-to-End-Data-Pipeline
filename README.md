@@ -1,6 +1,6 @@
 # GA4 Ecommerce Analytics Engine
 
-![Pipeline](docs/ga4_analytics_pipeline.svg)
+![Pipeline](docs/images/ga4_analytics_pipeline.svg)
 
 Turns the public GA4 sample ecommerce data (Google Merchandise Store, Nov. 1st, 2020 to Jan. 31st, 2021) into a star schema
 in Postgres and a seven-page Power BI report: daily performance, marketing and attribution, customer journeys,
@@ -9,8 +9,8 @@ products and funnel, basket analysis, and an item network.
 ## Report
 
 ![Homepage](docs/images/home.png)
-[![Open the interactive dashboard](https://img.shields.io/badge/%E2%96%B6%20Open%20the%20interactive%20dashboard-D5AA60?style=for-the-badge)](https://app.powerbi.com/view?r=eyJrIjoiMGQ2OGMwMGMtMDQyNS00ZjU1LTlhYWItZGQ3Njc2Yjg2ZmMzIiwidCI6ImQ1OTViMWJhLTJmNmQtNGMxNi1iOWI1LTViMGQ3YmM5MzNlNSJ9)
 
+[![Open the interactive dashboard](https://img.shields.io/badge/%E2%96%B6%20Open%20the%20interactive%20dashboard-D5AA60?style=for-the-badge)](https://app.powerbi.com/view?r=eyJrIjoiMGQ2OGMwMGMtMDQyNS00ZjU1LTlhYWItZGQ3Njc2Yjg2ZmMzIiwidCI6ImQ1OTViMWJhLTJmNmQtNGMxNi1iOWI1LTViMGQ3YmM5MzNlNSJ9)
 
 ## Stack
 
