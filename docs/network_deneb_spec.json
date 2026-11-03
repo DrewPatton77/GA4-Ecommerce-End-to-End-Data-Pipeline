@@ -1,0 +1,733 @@
+{
+ "description": "Basket network from saved layout positions: pan, zoom and auto-fit. Colour = community, ring = hub, gold dashed = link between groups",
+ "autosize": {
+  "type": "fit",
+  "contains": "padding"
+ },
+ "padding": {
+  "left": 0,
+  "right": 0,
+  "top": 0,
+  "bottom": 0
+ },
+ "background": "transparent",
+ "config": {
+  "view": {
+   "stroke": "transparent"
+  }
+ },
+ "signals": [
+  {
+   "name": "topN",
+   "value": 8
+  },
+  {
+   "name": "xext",
+   "update": "data('bounds').length ? [data('bounds')[0].x0 - 0.01, data('bounds')[0].x1 + 0.01] : [0, 1]"
+  },
+  {
+   "name": "yext",
+   "update": "data('bounds').length ? [data('bounds')[0].y0 - 0.01, data('bounds')[0].y1 + 0.01] : [0, 1]"
+  },
+  {
+   "name": "xrange",
+   "update": "[28, width - 28]"
+  },
+  {
+   "name": "yrange",
+   "update": "[height - 28, 28]"
+  },
+  {
+   "name": "down",
+   "value": null,
+   "on": [
+    {
+     "events": "touchend",
+     "update": "null"
+    },
+    {
+     "events": "mousedown, touchstart",
+     "update": "xy()"
+    }
+   ]
+  },
+  {
+   "name": "xcur",
+   "value": null,
+   "on": [
+    {
+     "events": "mousedown, touchstart, touchend",
+     "update": "slice(xdom)"
+    }
+   ]
+  },
+  {
+   "name": "ycur",
+   "value": null,
+   "on": [
+    {
+     "events": "mousedown, touchstart, touchend",
+     "update": "slice(ydom)"
+    }
+   ]
+  },
+  {
+   "name": "delta",
+   "value": [
+    0,
+    0
+   ],
+   "on": [
+    {
+     "events": [
+      {
+       "source": "window",
+       "type": "mousemove",
+       "consume": true,
+       "between": [
+        {
+         "type": "mousedown"
+        },
+        {
+         "source": "window",
+         "type": "mouseup"
+        }
+       ]
+      },
+      {
+       "type": "touchmove",
+       "consume": true,
+       "filter": "event.touches.length === 1"
+      }
+     ],
+     "update": "down ? [down[0] - x(), y() - down[1]] : [0, 0]"
+    }
+   ]
+  },
+  {
+   "name": "anchor",
+   "value": [
+    0,
+    0
+   ],
+   "on": [
+    {
+     "events": "wheel",
+     "update": "[invert('xscale', x()), invert('yscale', y())]"
+    }
+   ]
+  },
+  {
+   "name": "zoom",
+   "value": 1,
+   "on": [
+    {
+     "events": "wheel!",
+     "force": true,
+     "update": "pow(1.001, event.deltaY * pow(16, event.deltaMode))"
+    }
+   ]
+  },
+  {
+   "name": "xdom",
+   "update": "slice(xext)",
+   "on": [
+    {
+     "events": {
+      "signal": "delta"
+     },
+     "update": "[xcur[0] + span(xcur) * delta[0] / width, xcur[1] + span(xcur) * delta[0] / width]"
+    },
+    {
+     "events": {
+      "signal": "zoom"
+     },
+     "update": "[anchor[0] + (xdom[0] - anchor[0]) * zoom, anchor[0] + (xdom[1] - anchor[0]) * zoom]"
+    },
+    {
+     "events": "dblclick",
+     "update": "slice(xext)"
+    }
+   ]
+  },
+  {
+   "name": "ydom",
+   "update": "slice(yext)",
+   "on": [
+    {
+     "events": {
+      "signal": "delta"
+     },
+     "update": "[ycur[0] + span(ycur) * delta[1] / height, ycur[1] + span(ycur) * delta[1] / height]"
+    },
+    {
+     "events": {
+      "signal": "zoom"
+     },
+     "update": "[anchor[1] + (ydom[0] - anchor[1]) * zoom, anchor[1] + (ydom[1] - anchor[1]) * zoom]"
+    },
+    {
+     "events": "dblclick",
+     "update": "slice(yext)"
+    }
+   ]
+  }
+ ],
+ "data": [
+  {
+   "name": "dataset"
+  },
+  {
+   "name": "sideA",
+   "source": "dataset",
+   "transform": [
+    {
+     "type": "project",
+     "fields": [
+      "item_a",
+      "community_a",
+      "hub_a",
+      "strength_a",
+      "label_a",
+      "title_a",
+      "x_a",
+      "y_a"
+     ],
+     "as": [
+      "id",
+      "comm",
+      "hub",
+      "strength",
+      "label",
+      "title",
+      "x",
+      "y"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "sideB",
+   "source": "dataset",
+   "transform": [
+    {
+     "type": "project",
+     "fields": [
+      "item_b",
+      "community_b",
+      "hub_b",
+      "strength_b",
+      "label_b",
+      "title_b",
+      "x_b",
+      "y_b"
+     ],
+     "as": [
+      "id",
+      "comm",
+      "hub",
+      "strength",
+      "label",
+      "title",
+      "x",
+      "y"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "nodeAgg",
+   "source": [
+    "sideA",
+    "sideB"
+   ],
+   "transform": [
+    {
+     "type": "aggregate",
+     "groupby": [
+      "id"
+     ],
+     "fields": [
+      "comm",
+      "hub",
+      "strength",
+      "label",
+      "title",
+      "x",
+      "y"
+     ],
+     "ops": [
+      "max",
+      "max",
+      "max",
+      "max",
+      "max",
+      "max",
+      "max"
+     ],
+     "as": [
+      "comm",
+      "hub",
+      "strength",
+      "label",
+      "title",
+      "x",
+      "y"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "commTop",
+   "source": "nodeAgg",
+   "transform": [
+    {
+     "type": "aggregate",
+     "groupby": [
+      "comm"
+     ],
+     "fields": [
+      null,
+      "title"
+     ],
+     "ops": [
+      "count",
+      "max"
+     ],
+     "as": [
+      "n",
+      "title"
+     ]
+    },
+    {
+     "type": "window",
+     "sort": {
+      "field": [
+       "n",
+       "comm"
+      ],
+      "order": [
+       "descending",
+       "ascending"
+      ]
+     },
+     "ops": [
+      "row_number"
+     ],
+     "fields": [
+      null
+     ],
+     "as": [
+      "rank"
+     ]
+    },
+    {
+     "type": "filter",
+     "expr": "datum.rank <= topN"
+    }
+   ]
+  },
+  {
+   "name": "nodeData",
+   "source": "nodeAgg",
+   "transform": [
+    {
+     "type": "lookup",
+     "from": "commTop",
+     "key": "comm",
+     "fields": [
+      "comm"
+     ],
+     "values": [
+      "rank"
+     ],
+     "as": [
+      "crank"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "bounds",
+   "source": "nodeAgg",
+   "transform": [
+    {
+     "type": "aggregate",
+     "fields": [
+      "x",
+      "x",
+      "y",
+      "y"
+     ],
+     "ops": [
+      "min",
+      "max",
+      "min",
+      "max"
+     ],
+     "as": [
+      "x0",
+      "x1",
+      "y0",
+      "y1"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "edgeData",
+   "source": "dataset"
+  }
+ ],
+ "scales": [
+  {
+   "name": "xscale",
+   "type": "linear",
+   "zero": false,
+   "domain": {
+    "signal": "xdom"
+   },
+   "range": {
+    "signal": "xrange"
+   }
+  },
+  {
+   "name": "yscale",
+   "type": "linear",
+   "zero": false,
+   "domain": {
+    "signal": "ydom"
+   },
+   "range": {
+    "signal": "yrange"
+   }
+  },
+  {
+   "name": "color",
+   "type": "ordinal",
+   "domain": {
+    "data": "commTop",
+    "field": "comm"
+   },
+   "range": [
+    "#00C0E8",
+    "#D5AA60",
+    "#22C55E",
+    "#A78BFA",
+    "#5B9BFF",
+    "#2DD4BF",
+    "#F472B6",
+    "#FB923C"
+   ]
+  },
+  {
+   "name": "size",
+   "type": "sqrt",
+   "domain": {
+    "data": "nodeData",
+    "field": "strength"
+   },
+   "range": [
+    30,
+    520
+   ],
+   "zero": false
+  },
+  {
+   "name": "ew",
+   "type": "sqrt",
+   "domain": {
+    "data": "edgeData",
+    "field": "cooccurrence"
+   },
+   "range": [
+    0.6,
+    3.2
+   ]
+  }
+ ],
+ "marks": [
+  {
+   "type": "group",
+   "name": "plot",
+   "clip": true,
+   "encode": {
+    "enter": {
+     "x": {
+      "value": 0
+     },
+     "y": {
+      "value": 0
+     }
+    },
+    "update": {
+     "width": {
+      "signal": "width"
+     },
+     "height": {
+      "signal": "height"
+     }
+    }
+   },
+   "marks": [
+    {
+     "type": "rule",
+     "interactive": false,
+     "from": {
+      "data": "edgeData"
+     },
+     "encode": {
+      "update": {
+       "x": {
+        "scale": "xscale",
+        "field": "x_a"
+       },
+       "y": {
+        "scale": "yscale",
+        "field": "y_a"
+       },
+       "x2": {
+        "scale": "xscale",
+        "field": "x_b"
+       },
+       "y2": {
+        "scale": "yscale",
+        "field": "y_b"
+       },
+       "stroke": [
+        {
+         "test": "datum.is_bridge == 1",
+         "value": "#D5AA60"
+        },
+        {
+         "value": "#5F7380"
+        }
+       ],
+       "strokeDash": [
+        {
+         "test": "datum.is_bridge == 1",
+         "value": [
+          6,
+          4
+         ]
+        },
+        {
+         "value": [
+          1,
+          0
+         ]
+        }
+       ],
+       "strokeWidth": {
+        "scale": "ew",
+        "field": "cooccurrence"
+       },
+       "strokeOpacity": [
+        {
+         "test": "datum.is_bridge == 1",
+         "value": 0.9
+        },
+        {
+         "value": 0.5
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "nodeMarks",
+     "type": "symbol",
+     "from": {
+      "data": "nodeData"
+     },
+     "encode": {
+      "enter": {
+       "tooltip": {
+        "signal": "{'Item': datum.id, 'Group': datum.title, 'Baskets shared with other items': datum.strength}"
+       }
+      },
+      "update": {
+       "x": {
+        "scale": "xscale",
+        "field": "x"
+       },
+       "y": {
+        "scale": "yscale",
+        "field": "y"
+       },
+       "size": {
+        "scale": "size",
+        "field": "strength"
+       },
+       "fill": [
+        {
+         "test": "datum.crank != null",
+         "scale": "color",
+         "field": "comm"
+        },
+        {
+         "value": "#5F7380"
+        }
+       ],
+       "stroke": [
+        {
+         "test": "datum.hub == 1",
+         "value": "#EDF2F4"
+        },
+        {
+         "value": "#111619"
+        }
+       ],
+       "strokeWidth": [
+        {
+         "test": "datum.hub == 1",
+         "value": 2.2
+        },
+        {
+         "value": 1
+        }
+       ],
+       "cursor": {
+        "value": "pointer"
+       }
+      }
+     }
+    },
+    {
+     "type": "text",
+     "interactive": false,
+     "from": {
+      "data": "nodeData"
+     },
+     "encode": {
+      "update": {
+       "x": {
+        "scale": "xscale",
+        "field": "x"
+       },
+       "y": {
+        "scale": "yscale",
+        "field": "y"
+       },
+       "dy": {
+        "signal": "sqrt(scale('size', datum.strength)) / 2 + 3"
+       },
+       "text": {
+        "signal": "datum.label == 1 ? replace(replace(datum.id, 'Google ', ''), 'Campus ', '') : ''"
+       },
+       "align": {
+        "value": "center"
+       },
+       "baseline": {
+        "value": "top"
+       },
+       "fill": {
+        "value": "#D6DEE3"
+       },
+       "font": {
+        "value": "Segoe UI"
+       },
+       "fontSize": {
+        "value": 10
+       },
+       "fontWeight": [
+        {
+         "test": "datum.hub == 1",
+         "value": "bold"
+        },
+        {
+         "value": "normal"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "symbol",
+   "interactive": false,
+   "from": {
+    "data": "commTop"
+   },
+   "encode": {
+    "update": {
+     "x": {
+      "value": 14
+     },
+     "y": {
+      "signal": "14 + (datum.rank - 1) * 18"
+     },
+     "size": {
+      "value": 90
+     },
+     "fill": {
+      "scale": "color",
+      "field": "comm"
+     }
+    }
+   }
+  },
+  {
+   "type": "text",
+   "interactive": false,
+   "from": {
+    "data": "commTop"
+   },
+   "encode": {
+    "update": {
+     "x": {
+      "value": 26
+     },
+     "y": {
+      "signal": "14 + (datum.rank - 1) * 18"
+     },
+     "baseline": {
+      "value": "middle"
+     },
+     "text": {
+      "field": "title"
+     },
+     "fill": {
+      "value": "#98A7AF"
+     },
+     "font": {
+      "value": "Segoe UI"
+     },
+     "fontSize": {
+      "value": 11
+     }
+    }
+   }
+  },
+  {
+   "type": "text",
+   "interactive": false,
+   "encode": {
+    "update": {
+     "x": {
+      "signal": "width - 10"
+     },
+     "y": {
+      "signal": "height - 8"
+     },
+     "align": {
+      "value": "right"
+     },
+     "text": {
+      "value": "Scroll to zoom \u00b7 drag to pan \u00b7 double-click to reset"
+     },
+     "fill": {
+      "value": "#84939B"
+     },
+     "font": {
+      "value": "Segoe UI"
+     },
+     "fontSize": {
+      "value": 10
+     }
+    }
+   }
+  }
+ ]
+}

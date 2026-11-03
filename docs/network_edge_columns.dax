@@ -1,0 +1,25 @@
+// Calculated columns on fact_network_edge. They copy each end's item attributes onto the edge row,
+// so the Deneb visual can build both the nodes and the links from one table.
+
+hub_a      = LOOKUPVALUE ( dim_network_node[is_hub],   dim_network_node[item_name], fact_network_edge[item_a] )
+hub_b      = LOOKUPVALUE ( dim_network_node[is_hub],   dim_network_node[item_name], fact_network_edge[item_b] )
+strength_a = LOOKUPVALUE ( dim_network_node[strength], dim_network_node[item_name], fact_network_edge[item_a] )
+strength_b = LOOKUPVALUE ( dim_network_node[strength], dim_network_node[item_name], fact_network_edge[item_b] )
+
+// Saved layout position of each end (from the pipeline)
+x_a = LOOKUPVALUE ( dim_network_node[layout_x], dim_network_node[item_name], fact_network_edge[item_a] )
+y_a = LOOKUPVALUE ( dim_network_node[layout_y], dim_network_node[item_name], fact_network_edge[item_a] )
+x_b = LOOKUPVALUE ( dim_network_node[layout_x], dim_network_node[item_name], fact_network_edge[item_b] )
+y_b = LOOKUPVALUE ( dim_network_node[layout_y], dim_network_node[item_name], fact_network_edge[item_b] )
+
+// Label hubs and the most "between" items (top 5% by betweenness)
+label_a =
+VAR b = LOOKUPVALUE ( dim_network_node[betweenness], dim_network_node[item_name], fact_network_edge[item_a] )
+RETURN IF ( fact_network_edge[hub_a] = 1 || b >= PERCENTILE.INC ( dim_network_node[betweenness], 0.95 ), 1, 0 )
+
+label_b =
+VAR b = LOOKUPVALUE ( dim_network_node[betweenness], dim_network_node[item_name], fact_network_edge[item_b] )
+RETURN IF ( fact_network_edge[hub_b] = 1 || b >= PERCENTILE.INC ( dim_network_node[betweenness], 0.95 ), 1, 0 )
+
+title_a = LOOKUPVALUE ( dim_network_community[community_title], dim_network_community[community], fact_network_edge[community_a] )
+title_b = LOOKUPVALUE ( dim_network_community[community_title], dim_network_community[community], fact_network_edge[community_b] )
