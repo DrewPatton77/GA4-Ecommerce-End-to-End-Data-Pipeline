@@ -29,7 +29,7 @@ CHUNK_ROWS = 200_000
 # Override the .env
 project_root = Path(__file__).resolve().parents[3]
 target_env = project_root / '.env'
-load_dotenv(dotenv_path=target_env, override=True)
+load_dotenv(dotenv_path=target_env)#, override=True)
 
 @dataclass(frozen=True)
 class PostgresConfig:
