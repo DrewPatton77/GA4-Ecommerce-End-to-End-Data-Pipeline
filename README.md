@@ -1,81 +1,48 @@
-# ga4_ecommerce_analytics_engine
+# GA4 Ecommerce Analytics Engine
 
-Turns the public GA4 sample ecommerce dataset (BigQuery) into a star schema in Postgres for Power BI.
+![Pipeline](docs/ga4_analytics_pipeline.svg)
 
-    BigQuery  ->  polars pipeline  ->  parquet and/or Postgres (Docker)  ->  Power BI
+[![Open the interactive dashboard](https://img.shields.io/badge/%E2%96%B6%20Open%20the%20interactive%20dashboard-D5AA60?style=for-the-badge)](PASTE_PUBLISH_TO_WEB_LINK_HERE)
+
+Turns the public GA4 sample ecommerce data (Google Merchandise Store, 1 Nov 2020 to 31 Jan 2021) into a star schema
+in Postgres and a seven-page Power BI report: daily performance, marketing and attribution, customer journeys,
+products and funnel, basket analysis and an item network.
+
+## Stack
+
+| Layer | Tools |
+|---|---|
+| Source | Google BigQuery |
+| Transform and analytics | Python, polars, NumPy, NetworkX |
+| Warehouse | PostgreSQL 17 and pgAdmin in Docker, loaded with psycopg |
+| Report | Power BI, with a Deneb (Vega) network visual |
+| Tooling | uv, make, pytest |
 
 ## Quick start
 
-    uv sync
-    cp .env.example .env            # set POSTGRES_PASSWORD
-    make db-up                      # Postgres in Docker
-    make cost                       # dry-run the queries first (nothing is billed)
-    make run-pg                     # build everything and load Postgres
+```bash
+uv sync
+cp .env.example .env      # set POSTGRES_PASSWORD
+make db-up                # Postgres in Docker
+make cost                 # dry-run the BigQuery queries (nothing is billed)
+make run-pg               # build everything and load Postgres
+```
 
-`make` lists every task. Dates default to the whole sample dataset (2020-11-01 to 2021-01-31); override with
-`make run START=2020-12-01 END=2020-12-31`. Raw BigQuery results are cached as parquet in `data/cache`, so
-re-runs are free. Use `make refresh` to bypass the cache.
+`make` lists every task. Run `uv run ga4-pipeline --help` for the options.
 
-Run it without make: `uv run ga4-pipeline 2020-11-01 2021-01-31 --to both`.
+> [!WARNING]
+> From 26 Jan 2021 the source drops purchase revenue (38% of purchases on 26 Jan, 100% on 31 Jan), so revenue and
+> purchases fall at the end of the period. This is a direct data quality issue. See:
+> [docs/development.md](docs/development.md#reading-the-data).
 
-## How it works
+## Documentation
 
-`Pipeline().run(raw)` (in `pipeline.py`) takes the three raw extracts and returns 15 polars tables. It does no
-file or database access; the writers do that. Each stage is a module you can use and test on its own:
-
-| Stage | Module | What it does |
-|---|---|---|
-| source | `sources/` | Fetch events, items and user dimensions from BigQuery (with parquet cache and cost estimate) |
-| clean | `cleaning/transactions.py` | Deduplicate purchases, build composite session ids and transaction ids |
-| enrich | `enrichment/` | Resolve each session's UTM values, then classify the marketing channel from ordered rules |
-| aggregate | `aggregation/` | Events -> sessions -> user journeys (paths, durations, conversion value, log bins) |
-| dimensions | `dimensions/` | Date, geo, device, traffic source, item, transaction; integer keys and key mappings |
-| facts | `facts/` | Event, item funnel, session, user, journey tables with dimension keys attached |
-| attribution | `analytics/attribution.py` | Credit for conversions under eight models (first, last, last non-direct, linear, position, time-decay, Shapley, Markov) |
-| basket | `analytics/basket.py` | Items bought together: support, confidence, lift, Louvain communities |
-| write | `writers/` | Parquet files, or Postgres in one transaction with primary and foreign keys |
-
-### Column names live in one place
-
-`schema.py` holds `DataSchema`, a frozen dataclass of every column name and event-type value. Every stage
-subclasses it, so renaming a column is one change, and tests can override names per instance:
-
-    SessionFacts(date_id="day_key")
-    Pipeline(schema=DataSchema(country="nation"))
-
-### Channel rules are data
-
-`enrichment/channel_rules.py` is an ordered list of rules. The first match wins. A rule's clauses are OR-ed,
-and the criteria inside one clause are AND-ed. Edit the list to change a channel; no code changes needed.
-
-## Output tables
-
-See [docs/tables.md](docs/tables.md) for the grain, keys and relationships of all 15 tables.
-
-## Tests
-
-    make test
-
-Tests are deliberately few and focused: a handful per module. Pure-Python logic (CLI, load order, type mapping)
-is tested directly. Polars transformations are tested on tiny hand-built frames. The Postgres `COPY` and
-constraint code is exercised by a real run (`make run-pg`), not by unit tests.
-
-## Known differences from the original notebook code
-
-Worth knowing when you compare against a golden dataset:
-
-- Geo is mapped per user from their first sighting; device from each user's first row.
-- Converting-journey dates are converted from the converting table itself (the original used the wrong frame).
-- Event facts get a `date_id`; the event-item bridge is an inner join.
-- `total_lifetime_events` sums each session's `event_count`.
-- Basket item columns are sorted alphabetically; items with no revenue are dropped; community numbers can differ
-  from the original run, so compare the groupings, not the labels.
-
-## Layout
-
-    src/ga4_ecommerce_analytics_engine/
-        schema.py  pipeline.py  cli.py
-        sources/  cleaning/  enrichment/  aggregation/  dimensions/  facts/  analytics/  writers/  utils/
-    sql/bigquery/                 query templates
-    tests/unit/                   mirrors src/
-    docker-compose.yml  Makefile  .env.example
+|                                        |                                                  |
+| -------------------------------------- | ------------------------------------------------ |
+| [Module flowcharts](docs/modules.md)   | One chart per module                             |
+| [Output tables](docs/tables.md)        | Every table, grain, and key                      |
+| [Architecture](docs/architecture.md)   | Stages and design rules                          |
+| [Analytics methods](docs/analytics.md) | Attribution, basket, and network                 |
+| [Power BI](docs/powerbi.md)            | Setup, relationships, measures,  and screenshots |
+| [Development](docs/development.md)     | Tests and changing things                        |
+|                                        |                                                  |
