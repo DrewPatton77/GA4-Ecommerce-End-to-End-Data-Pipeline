@@ -8,7 +8,7 @@ products and funnel, basket analysis, and an item network.
 
 ## Report
 
-The analytics report can read in the `ga4_ecommerce_analytics_report.md` file. Please read it for the quick breakdown and what actions to perform next. Below is the interactive dashboard, where said insights came from.
+The analytics report can read in the [ga4_ecommerce_analytics_report.md](ga4_ecommerce_analytics_report.md#reading-the-final-report) file. Please read it for the quick breakdown and what actions to perform next. Below is the interactive dashboard, where said insights came from.
 
 ![Homepage](docs/images/home.png)
 
