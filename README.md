@@ -8,6 +8,8 @@ products and funnel, basket analysis, and an item network.
 
 ## Report
 
+The analytics report can read in the `ga4_ecommerce_analytics_report.md` file. Please read it for the quick breakdown and what actions to perform next. Below is the interactive dashboard, where said insights came from.
+
 ![Homepage](docs/images/home.png)
 
 [![Open the interactive dashboard](https://img.shields.io/badge/%E2%96%B6%20Open%20the%20interactive%20dashboard-D5AA60?style=for-the-badge)](https://app.powerbi.com/view?r=eyJrIjoiMGQ2OGMwMGMtMDQyNS00ZjU1LTlhYWItZGQ3Njc2Yjg2ZmMzIiwidCI6ImQ1OTViMWJhLTJmNmQtNGMxNi1iOWI1LTViMGQ3YmM5MzNlNSJ9)
