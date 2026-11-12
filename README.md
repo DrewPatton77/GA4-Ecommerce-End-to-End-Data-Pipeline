@@ -39,7 +39,7 @@ make run-pg               # build everything and load Postgres
 ## Data Quality
 
 > [!WARNING]
-> From Jan. 26th, 2021 the source drops purchase revenue (38% of purchases on Jan. 26th and 100% on Jan. 31st), so the data is has a hard cap at Jan. 25th, 2021 instead of Jan. 31st, 2021. This is a direct data quality issue, see:
+> From Jan. 26th, 2021 the source drops purchase revenue (38% of purchases on Jan. 26th and 100% on Jan. 31st), so the data has a hard cap at Jan. 25th, 2021 instead of Jan. 31st, 2021. This is a direct data quality issue, see:
 > [docs/development.md](docs/development.md#reading-the-data).
 
 ## Documentation
